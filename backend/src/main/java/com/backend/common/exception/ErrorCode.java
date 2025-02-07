@@ -12,6 +12,9 @@ public enum ErrorCode {
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "인증이 유효하지 않습니다"),
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "토큰이 만료되었습니다"),
 
+    ENVIRONMENT_VARIABLE_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "환경 변수를 찾을 수 없습니다"),
+    INVALID_OTP(HttpStatus.BAD_REQUEST, "인증번호가 일치하지 않습니다"),
+
     DUPLICATED_USER_NAME(HttpStatus.BAD_REQUEST, "중복된 사용자 이름입니다"),
     DUPLICATED_EMAIL(HttpStatus.BAD_REQUEST, "중복된 이메일입니다"),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"),
