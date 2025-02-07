@@ -1,0 +1,20 @@
+spring:
+  config:
+    activate:
+      on-profile : dev
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/tradingDB
+    username: root
+    password: 1234
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: false
+    generate-ddl: true
+    defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: create-drop
