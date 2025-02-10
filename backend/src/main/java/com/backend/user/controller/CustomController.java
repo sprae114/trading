@@ -10,7 +10,6 @@ import com.backend.user.dto.request.UpdateCustomerRequest;
 import com.backend.user.dto.response.CustomerDetailsDto;
 import com.backend.user.dto.response.LoginResponseDto;
 import com.backend.user.model.Role;
-import com.backend.user.model.entity.Customer;
 import com.backend.user.service.CustomerService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -23,10 +22,9 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.crypto.SecretKey;
@@ -40,6 +38,7 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/api/login")
 public class CustomController {
 
     private final CustomerService customerService;
@@ -47,7 +46,7 @@ public class CustomController {
     private final Environment env;
 
 
-    @PostMapping("/login/register")
+    @PostMapping("/register")
     public ResponseEntity<String> registerUser(@Valid @RequestBody RegisterCustomerRequest requestDto) {
         customerService.create(requestDto, Role.ROLE_CUSTOMER);
         return ResponseEntity.ok("성공적으로 회원이 등록되었습니다.");
@@ -55,7 +54,7 @@ public class CustomController {
 
 
     // 로그인 처리(토큰 발급)
-    @PostMapping("/login/home")
+    @PostMapping("/home")
     public ResponseEntity<LoginResponseDto> apiLogin(@RequestBody LoginCustomerRequest requestDto) {
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(requestDto.email(), requestDto.pwd());
@@ -99,7 +98,7 @@ public class CustomController {
 
 
     // 비밀번호 수정
-    @PostMapping("/login/find-pw")
+    @PostMapping("/find-pw")
     public ResponseEntity<String> findPassword(@RequestBody UpdateCustomerRequest requestDto) {
         customerService.update(requestDto);
 

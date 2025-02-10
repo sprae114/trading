@@ -63,7 +63,7 @@ public class EmailControllerTest {
         doNothing().when(redisService).setKeyWithExpiration(anyString(), anyString());
 
         //when
-        mockMvc.perform(get("/login/register/auth")
+        mockMvc.perform(get("/api/login/register/auth")
                         .param("email", email)
                         .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -84,7 +84,7 @@ public class EmailControllerTest {
         when(redisService.get(email)).thenReturn("11111");
 
         //when
-        mockMvc.perform(get("/login/register/auth")
+        mockMvc.perform(get("/api/login/register/auth")
                         .param("email", email)
                         .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -101,7 +101,7 @@ public class EmailControllerTest {
 
         when(redisService.get(email)).thenReturn(otp);
 
-        mockMvc.perform(post("/login/register/auth")
+        mockMvc.perform(post("/api/login/register/auth")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonRequest))
                 .andExpect(status().isOk())
@@ -119,7 +119,7 @@ public class EmailControllerTest {
 
         when(redisService.get(email)).thenReturn("11111");
 
-        mockMvc.perform(post("/login/register/auth")
+        mockMvc.perform(post("/api/login/register/auth")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonRequest))
                 .andExpect(status().isBadRequest());
@@ -137,7 +137,7 @@ public class EmailControllerTest {
         when(authCodeService.generateAuthCode()).thenReturn(authNumber);
         doNothing().when(redisService).setKeyWithExpiration(anyString(), anyString());
 
-        mockMvc.perform(get("/login/find-pw/auth")
+        mockMvc.perform(get("/api/login/find-pw/auth")
                         .param("email", email)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -153,7 +153,7 @@ public class EmailControllerTest {
 
         when(redisService.get(email)).thenReturn("11111");
 
-        mockMvc.perform(get("/login/find-pw/auth")
+        mockMvc.perform(get("/api/login/find-pw/auth")
                         .param("email", email)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
@@ -167,7 +167,7 @@ public class EmailControllerTest {
 
         when(redisService.get(email)).thenReturn(auth);
 
-        mockMvc.perform(post("/login/find-pw/auth")
+        mockMvc.perform(post("/api/login/find-pw/auth")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonRequest))
                 .andExpect(status().isOk())
@@ -182,7 +182,7 @@ public class EmailControllerTest {
 
         when(redisService.get(email)).thenReturn("11111");
 
-        mockMvc.perform(post("/login/find-pw/auth")
+        mockMvc.perform(post("/api/login/find-pw/auth")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonRequest))
                 .andExpect(status().isBadRequest());

@@ -1,31 +1,24 @@
 package com.backend.user.controller;
 
-import com.backend.common.exception.CustomException;
+
 import com.backend.common.exception.ErrorCode;
 import com.backend.common.util.ApplicationConstants;
 import com.backend.user.dto.request.LoginCustomerRequest;
 import com.backend.user.dto.request.RegisterCustomerRequest;
 import com.backend.user.dto.request.UpdateCustomerRequest;
-import com.backend.user.dto.response.LoginResponseDto;
 import com.backend.user.model.Role;
 import com.backend.user.model.entity.Customer;
 import com.backend.user.service.CustomerService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.core.env.Environment;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 
@@ -74,7 +67,7 @@ class CustomControllerTest {
     @DisplayName("회원 가입 - 성공")
     void registerUser_Success() throws Exception {
         // When
-        mockMvc.perform(post("/login/register")
+        mockMvc.perform(post("/api/login/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(registerRequest)
                 )
@@ -88,7 +81,7 @@ class CustomControllerTest {
     void registerUser_Fail_DuplicatedEmail() throws Exception {
         String duplicateEmail = makeRegisterRequest("aaaa@example.com");
 
-        mockMvc.perform(post("/login/register")
+        mockMvc.perform(post("/api/login/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(duplicateEmail)
                 )
@@ -101,7 +94,7 @@ class CustomControllerTest {
     void registerUser_Fail_InvalidEmail() throws Exception {
         String invalidEmail = makeRegisterRequest("invalidemail");
 
-        mockMvc.perform(post("/login/register")
+        mockMvc.perform(post("/api/login/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(invalidEmail)
                 )
@@ -113,7 +106,7 @@ class CustomControllerTest {
     @Test
     public void testLoginUser_Success() throws Exception {
 
-        mockMvc.perform(post("/login/home")
+        mockMvc.perform(post("/api/login/home")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginRequest)
                 )
@@ -128,7 +121,7 @@ class CustomControllerTest {
     public void testLoginUser_Fail_NotExistEmail() throws Exception {
         String notExistEmail = makeLoginRequest("1111@example.com");
 
-        mockMvc.perform(post("/login/home")
+        mockMvc.perform(post("/api/login/home")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(notExistEmail)
                 )
@@ -146,7 +139,7 @@ class CustomControllerTest {
                 .pwd("1111")
                 .build());
 
-        mockMvc.perform(post("/login/home")
+        mockMvc.perform(post("/api/login/home")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(wrongPassword)
                 )
@@ -160,7 +153,7 @@ class CustomControllerTest {
     @Test
     void findPassword_Success() throws Exception {
         // When
-       mockMvc.perform(post("/login/find-pw")
+       mockMvc.perform(post("/api/login/find-pw")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(updateRequest)
                 )
@@ -173,7 +166,7 @@ class CustomControllerTest {
     void findPassword_Fail_NotExistEmail() throws Exception {
         String notExistEmail = makeUpdateRequest("1111@example.com");
 
-        mockMvc.perform(post("/login/find-pw")
+        mockMvc.perform(post("/api/login/find-pw")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(notExistEmail)
                 )
