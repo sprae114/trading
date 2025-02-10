@@ -3,10 +3,8 @@ package com.backend.user.service;
 
 import com.backend.common.exception.CustomException;
 import com.backend.common.exception.ErrorCode;
-import com.backend.user.dto.request.RegisterCustomerRequest;
 import com.backend.user.model.Role;
 import com.backend.user.model.entity.Authority;
-import com.backend.user.model.entity.Customer;
 import com.backend.user.repository.AuthorityRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;

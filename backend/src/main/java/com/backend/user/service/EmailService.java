@@ -3,7 +3,6 @@ package com.backend.user.service;
 
 import com.backend.common.exception.CustomException;
 import com.backend.common.exception.ErrorCode;
-import com.backend.user.dto.request.EmailRequest;
 import com.backend.user.util.EnvLoader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;

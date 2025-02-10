@@ -1,10 +1,8 @@
 package com.backend.user.model.entity;
 
-import com.backend.user.model.BaseEntity;
+import com.backend.common.model.BaseEntity;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 @Builder(toBuilder = true)

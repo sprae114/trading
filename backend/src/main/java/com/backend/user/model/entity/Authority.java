@@ -1,5 +1,6 @@
 package com.backend.user.model.entity;
 
+import com.backend.common.model.BaseEntity;
 import com.backend.user.model.Role;
 import jakarta.persistence.*;
 import lombok.*;
@@ -11,7 +12,7 @@ import lombok.*;
 @AllArgsConstructor
 @Getter
 @ToString
-public class Authority {
+public class Authority extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
