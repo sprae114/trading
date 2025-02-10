@@ -18,6 +18,9 @@ import org.springframework.stereotype.Service;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * 로그인에 필요한 UserDetailsService 커스텀
+ */
 @Transactional
 @Service
 @RequiredArgsConstructor

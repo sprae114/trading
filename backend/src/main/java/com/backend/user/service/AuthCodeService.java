@@ -1,9 +1,14 @@
 package com.backend.user.service;
 
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.Random;
 
+/**
+ * OTP 랜덤 숫자 생성
+ */
+@Transactional
 @Service
 public class AuthCodeService {
 

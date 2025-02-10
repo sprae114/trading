@@ -4,6 +4,7 @@ package com.backend.user.service;
 import com.backend.common.exception.CustomException;
 import com.backend.common.exception.ErrorCode;
 import com.backend.user.util.EnvLoader;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 /**
  * 이메일 서비스
  */
+@Transactional
 @Service
 @RequiredArgsConstructor
 public class EmailService {

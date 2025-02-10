@@ -1,5 +1,6 @@
 package com.backend.user.service;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -9,6 +10,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * RedisService 구현
  */
+
+@Transactional
 @Service
 @RequiredArgsConstructor
 public class RedisService {
