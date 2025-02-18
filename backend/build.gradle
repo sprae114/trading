@@ -34,6 +34,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-mail' // Email
 	implementation 'io.github.cdimascio:dotenv-java:3.1.0' // 환경변수
 	implementation 'com.fasterxml.jackson.core:jackson-databind' // Jackson
+	implementation 'io.hypersistence:hypersistence-utils-hibernate-63:3.9.1'
 
 	compileOnly 'org.projectlombok:lombok'
 
