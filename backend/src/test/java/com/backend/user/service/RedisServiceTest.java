@@ -1,5 +1,6 @@
 package com.backend.user.service;
 
+import com.backend.common.service.RedisService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -57,7 +58,7 @@ public class RedisServiceTest {
         when(valueOperations.get(key)).thenReturn(expectedValue); // valueOperations의 get 메서드 모의
 
         // when
-        String actualValue = redisService.get(key);
+        String actualValue = redisService.get(key).toString();
 
         // then
         verify(valueOperations).get(key); // get 메서드 호출 여부 검증

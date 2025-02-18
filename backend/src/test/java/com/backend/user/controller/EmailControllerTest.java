@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.backend.user.dto.request.AuthRequestDto;
 import com.backend.user.service.AuthCodeService;
 import com.backend.user.service.EmailService;
-import com.backend.user.service.RedisService;
+import com.backend.common.service.RedisService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

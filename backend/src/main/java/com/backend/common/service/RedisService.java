@@ -1,4 +1,4 @@
-package com.backend.user.service;
+package com.backend.common.service;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -23,11 +23,19 @@ public class RedisService {
         redisTemplate.opsForValue().set(key, value);
     }
 
-    public String get(String key) {
-        return (String) redisTemplate.opsForValue().get(key);
+    public void save(String key, Object value) {
+        redisTemplate.opsForValue().set(key, value);
+    }
+
+    public Object get(String key) {
+        return redisTemplate.opsForValue().get(key);
     }
 
     public void setKeyWithExpiration(String key, String value) {
         redisTemplate.opsForValue().set(key, value, TIME_OUT, TimeUnit.SECONDS);
+    }
+
+    public void delete(String key){
+        redisTemplate.delete(key);
     }
 }

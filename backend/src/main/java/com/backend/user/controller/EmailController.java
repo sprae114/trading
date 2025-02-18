@@ -7,7 +7,7 @@ import com.backend.user.dto.request.AuthRequestDto;
 import com.backend.user.repository.CustomerRepository;
 import com.backend.user.service.AuthCodeService;
 import com.backend.user.service.EmailService;
-import com.backend.user.service.RedisService;
+import com.backend.common.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -49,7 +49,7 @@ public class EmailController {
         String email = authRequestDto.email();
         String auth = authRequestDto.otp();
 
-        String authNumber = redisService.get(email);
+        String authNumber = redisService.get(email).toString();
         if (authNumber == null || !authNumber.equals(auth)) {
             throw new CustomException(ErrorCode.INVALID_OTP, auth);
         }
