@@ -1,4 +1,4 @@
-package com.backend.common.configuration.comon;
+package com.backend.common.configuration.common;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

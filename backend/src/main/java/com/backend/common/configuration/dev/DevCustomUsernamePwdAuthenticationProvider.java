@@ -5,7 +5,6 @@ import com.backend.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -37,6 +36,7 @@ public class DevCustomUsernamePwdAuthenticationProvider implements Authenticatio
 
     /**
      * 사용자 이름과 비밀번호를 사용한 인증 처리
+     * dev 환경에서 인증 처리 안함.
      */
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
@@ -44,10 +44,6 @@ public class DevCustomUsernamePwdAuthenticationProvider implements Authenticatio
         String pwd = authentication.getCredentials().toString();
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-
-        if (!passwordEncoder.matches(pwd, userDetails.getPassword())) {
-            throw new CustomException(ErrorCode.INVALID_PASSWORD, email);
-        }
 
         return new UsernamePasswordAuthenticationToken(email, pwd, userDetails.getAuthorities());
     }

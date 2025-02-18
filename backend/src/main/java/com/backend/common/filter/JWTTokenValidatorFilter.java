@@ -1,4 +1,4 @@
-package com.backend.common.configuration.filter;
+package com.backend.common.filter;
 
 import com.backend.common.exception.ErrorCode;
 import com.backend.common.util.ApplicationConstants;
