@@ -37,8 +37,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-websocket' // websocket
 	implementation 'org.springframework.boot:spring-boot-starter-data-mongodb' // mongodb
 	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'// LocalDateTime 지원
-
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'// LocalDateTime 지원
 	compileOnly 'org.projectlombok:lombok'
 
 	runtimeOnly 'com.mysql:mysql-connector-j'
