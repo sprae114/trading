@@ -2,18 +2,23 @@ package com.backend.chat.controller;
 
 import com.backend.chat.dto.ChatMessageSaveDto;
 import com.backend.chat.dto.ChatRoomSaveDto;
+import com.backend.chat.dto.ChatRoomDeleteDto;
 import com.backend.chat.model.ChatMessage;
 import com.backend.chat.model.ChatRoom;
 import com.backend.chat.service.ChatMessageService;
 import com.backend.chat.service.ChatRoomService;
+import com.backend.common.service.KafkaProducer;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +30,8 @@ public class ChatController {
 
     private final ChatMessageService chatMessageService;
     private final ChatRoomService chatRoomService;
+    private final KafkaProducer kafkaProducer;
+    private final ObjectMapper objectMapper;
 
 
     /**
@@ -40,8 +47,8 @@ public class ChatController {
      * 해당 채팅방 입장
      */
     @GetMapping("/rooms/{roomId}")
-    public ChatRoom getRoom(@PathVariable String roomId, ChatRoomSaveDto chatRoomSaveDto) {
-        return chatRoomService.makeChatRoom(chatRoomSaveDto);
+    public ChatRoom getRoom(@PathVariable String roomId) {
+        return chatRoomService.getOne(roomId);
     }
 
 
@@ -49,43 +56,50 @@ public class ChatController {
      * 채팅하기
      */
     @MessageMapping("/send/{chatRoomId}")
-    @SendTo("/topic/chat-room/{chatRoomId}")
-    public ChatMessage handleMessage(ChatMessageSaveDto messageDto,
-                                     @DestinationVariable("chatRoomId") String chatRoomId) {
+    public void handleMessage(@Valid ChatMessageSaveDto messageDto,
+                              @DestinationVariable("chatRoomId") String chatRoomId)
+            throws JsonProcessingException {
 
-        return chatMessageService.saveOne(messageDto);
+        ChatMessage chatMessage = chatMessageService.saveOne(messageDto); // 메시지 저장
+        kafkaProducer.sendMessage("chat-topic", objectMapper.writeValueAsString(chatMessage)); // kafka 전달
+    }
+
+    /**
+     *  채팅방 생성
+     */
+    @PostMapping("/rooms")
+    public ChatRoom createRoom(@RequestBody ChatRoomSaveDto chatRoomSaveDto) {
+        return chatRoomService.makeChatRoom(chatRoomSaveDto);
     }
 
 
     /**
-     * 특정 채팅방 삭제
+     * 채팅방 삭제
      */
-    @DeleteMapping("/rooms/{roomId}")
-    public void deleteRoom(@PathVariable String roomId) {
-        chatRoomService.delete(roomId);
+    @DeleteMapping("/rooms")
+    public void deleteRoom(@RequestBody ChatRoomDeleteDto customerInfo) {
+        chatRoomService.delete(customerInfo);
     }
 
 
     /**
-     * 다수의 채팅방 삭제
+     * 해당 채팅방 내용 가져오기
      */
-    @DeleteMapping("/rooms/delete")
-    public void deleteRooms(@RequestBody List<String> roomIds) {
-        chatRoomService.deleteList(roomIds);
+    @GetMapping("/rooms/{roomId}/messages")
+    public Slice<ChatMessage> getMessages(
+            @PathVariable String roomId,
+            @PageableDefault(sort = "timestamp", direction = Sort.Direction.DESC) Pageable pageable) {
+        return chatMessageService.findAll(pageable, roomId);
     }
 
+    /**
+     * 테스트용
+     */
 
     // 전체 채팅방 가져오기
     @GetMapping
     public List<ChatRoom> getAll(){
         return chatRoomService.getAll();
-    }
-
-
-    // 채팅방 생성
-    @PostMapping("/rooms")
-    public ChatRoom createRoom(@RequestBody ChatRoomSaveDto chatRoomSaveDto) {
-        return chatRoomService.create(chatRoomSaveDto);
     }
 
 
@@ -96,4 +110,5 @@ public class ChatController {
         chatMessageService.saveOne(chatMessageSaveDto);
         return ChatMessageSaveDto.toEntity(chatMessageSaveDto);
     }
+
 }
