@@ -29,6 +29,9 @@ public enum ErrorCode {
     ALREADY_LIKED_POST(HttpStatus.CONFLICT, "이미 좋아요를 했습니다"),
     LIKES_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 좋아요를 찾을 수 없습니다"),
 
+    CHATROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 채팅방을 찾을 수 없습니다"),
+    ALREADY_CHATROOM(HttpStatus.CONFLICT, "이미 채팅방이 존재합니다"),
+
     NOTIFICATION_CONNECT_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SSE 연결을 실패했습니다"),
 
     DATABASE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "데이터베이스 에러가 발생했습니다"),
