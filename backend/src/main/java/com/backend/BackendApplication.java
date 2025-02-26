@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
 @EnableJpaAuditing
 @SpringBootApplication
@@ -17,6 +18,11 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @EnableJpaRepositories(basePackages = {
 		"com.backend.user.repository" ,
 		"com.backend.post.repository"
+})
+
+
+@EnableMongoRepositories(basePackages = {
+		"com.backend.chat.repository"
 })
 public class BackendApplication {
 
