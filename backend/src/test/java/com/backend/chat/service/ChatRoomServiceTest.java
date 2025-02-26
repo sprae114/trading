@@ -1,10 +1,13 @@
 package com.backend.chat.service;
 
+import com.backend.chat.dto.ChatRoomDeleteDto;
 import com.backend.chat.dto.ChatRoomSaveDto;
+import com.backend.chat.dto.RoomInfo;
 import com.backend.chat.model.ChatRoom;
 import com.backend.chat.repository.ChatRoomRepository;
 import com.backend.common.exception.CustomException;
 import com.backend.common.exception.ErrorCode;
+import com.backend.user.model.Role;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,15 +37,15 @@ public class ChatRoomServiceTest {
     void setUp() {
         chatRoomRepository.deleteAll();
 
-        chatRoom = makeChatRoom("testRoom1", 1L);
+        chatRoom = createRoom("testRoom1", 1L);
     }
 
 
     @Test
     @DisplayName("채팅방 생성 : 생성")
-    public void createChatRoomSuccess() {
+    public void createRoomSuccess() {
         //given
-        makeChatRoom("testRoom2", 1L);
+        createRoom("testRoom2", 1L);
 
         //when
         List<ChatRoom> result = chatRoomRepository.findAll();
@@ -55,9 +58,9 @@ public class ChatRoomServiceTest {
 
     @Test
     @DisplayName("채팅방 생성 : 실패(존재하는 채팅방)")
-    public void createChatRoomFail_ExistChatRoom() {
+    public void createRoomFail_ExistChatRoom() {
         //then
-        CustomException exception = assertThrows(CustomException.class, () -> makeChatRoom("testRoom1", 1L));
+        CustomException exception = assertThrows(CustomException.class, () -> createRoom("testRoom1", 1L));
         assertEquals(ErrorCode.ALREADY_CHATROOM, exception.getErrorCode());
     }
 
@@ -84,8 +87,8 @@ public class ChatRoomServiceTest {
     @DisplayName("채팅방 리스트 조회 : 성공")
     public void findAllChatRoomSuccess() {
         //given
-        makeChatRoom("testRoom2", 2L);
-        makeChatRoom("testRoom3", 1L);
+        createRoom("testRoom2", 2L);
+        createRoom("testRoom3", 1L);
         Pageable pageable = PageRequest.of(0, 10);
 
         //when
@@ -99,39 +102,104 @@ public class ChatRoomServiceTest {
     }
 
     @Test
-    @DisplayName("채팅방 하나 삭제 : 성공")
+    @DisplayName("채팅방 삭제 : 성공(관리자)")
     public void deleteChatRoomSuccess() {
         //given
-        makeChatRoom("testRoom2", 2L);
-        makeChatRoom("testRoom3", 1L);
+        ChatRoom chatRoom2 = createRoom("testRoom2", 2L);
+
+        List<RoomInfo> chatRoomInfoList = createRoomList(chatRoom2);
+
+        ChatRoomDeleteDto chatRoomDeleteRequest = ChatRoomDeleteDto
+                .builder()
+                .loginName("testUser000")
+                .role(Role.ROLE_ADMIN)
+                .roomInfo(chatRoomInfoList)
+                .build();
 
         //when
-        chatRoomService.delete(chatRoom.getId());
+        chatRoomService.delete(chatRoomDeleteRequest);
+
+        //ten
+        List<ChatRoom> result = chatRoomRepository.findAll();
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    @DisplayName("채팅방 삭제 : 성공(해당 유저)")
+    public void deleteChatRoomSuccessCustomer() {
+        //given
+        ChatRoom chatRoom2 = createRoom("testRoom2", 2L);
+
+        List<RoomInfo> chatRoomInfoList = createRoomList(chatRoom2);
+
+        ChatRoomDeleteDto chatRoomDeleteRequest = ChatRoomDeleteDto
+                .builder()
+                .loginName("testUser1")
+                .role(Role.ROLE_CUSTOMER)
+                .roomInfo(chatRoomInfoList)
+                .build();
+
+        //when
+        chatRoomService.delete(chatRoomDeleteRequest);
+
+        //ten
+        List<ChatRoom> result = chatRoomRepository.findAll();
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    @DisplayName("채팅방 삭제 : 성공(다른 유저)")
+    public void deleteChatRoomSuccessNotCustomer() {
+        //given
+        ChatRoom chatRoom2 = createRoom("testRoom2", 2L);
+        List<RoomInfo> chatRoomInfoList = createRoomList(chatRoom2);
+
+        ChatRoomDeleteDto chatRoomDeleteRequest = ChatRoomDeleteDto
+                .builder()
+                .loginName("testUser999")
+                .role(Role.ROLE_CUSTOMER)
+                .roomInfo(chatRoomInfoList)
+                .build();
+
+        //when
+        chatRoomService.delete(chatRoomDeleteRequest);
 
         //ten
         List<ChatRoom> result = chatRoomRepository.findAll();
         assertEquals(2, result.size());
-        assertEquals("testRoom2", result.get(0).getName());
-        assertEquals("testRoom3", result.get(1).getName());
+    }
+
+    
+    @Test
+    @DisplayName("채팅방 만들어서 새로운 채팅 시작 : 성공")
+    public void startNewChatRoomSuccess() {
+        makeRoom("testRoom2", 2L);
+
+        //when
+        List<ChatRoom> result = chatRoomRepository.findAll();
+
+        //then
+        assertEquals(2, result.size());
+        assertEquals("testRoom1", result.get(0).getName());
+        assertEquals("testRoom2", result.get(1).getName());
     }
 
     @Test
-    @DisplayName("채팅방 여러개 삭제 : 성공")
-    public void deleteChatRoomListSuccess() {
-        //given
-        ChatRoom testRoom2 = makeChatRoom("testRoom2", 2L);
-        makeChatRoom("testRoom3", 1L);
+    @DisplayName("채팅방 만들어서 새로운 채팅 시작 : 성공(이미 존재하면 방ID 리턴)")
+    public void startNewChatRoomSuccessExistChatRoom() {
+        makeRoom("testRoom1", 1L);
 
         //when
-        chatRoomService.deleteList(List.of(testRoom2.getId(), chatRoom.getId()));
-
-        //ten
         List<ChatRoom> result = chatRoomRepository.findAll();
+
+        //then
         assertEquals(1, result.size());
-        assertEquals("testRoom3", result.get(0).getName());
+        assertEquals("testRoom1", result.get(0).getName());
+        assertEquals(chatRoom.getId(), result.get(0).getId());
     }
 
-    private ChatRoom makeChatRoom(String roomName, Long sendId) {
+
+    private ChatRoom createRoom(String roomName, Long sendId) {
         ChatRoomSaveDto chatRoom = ChatRoomSaveDto.builder()
                 .name(roomName)
                 .senderId(sendId)
@@ -141,5 +209,30 @@ public class ChatRoomServiceTest {
                 .build();
 
         return chatRoomService.create(chatRoom);
+    }
+
+
+    private ChatRoom makeRoom(String roomName, Long sendId) {
+        ChatRoomSaveDto chatRoom = ChatRoomSaveDto.builder()
+                .name(roomName)
+                .senderId(sendId)
+                .sender("testUser1")
+                .receiver("testUser2")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        return chatRoomService.makeChatRoom(chatRoom);
+    }
+
+    private List<RoomInfo> createRoomList(ChatRoom chatRoom2) {
+        return List.of(
+                RoomInfo.builder()
+                        .roomId(chatRoom.getId())
+                        .createCustomer("testUser1")
+                        .build(),
+                RoomInfo.builder()
+                        .roomId(chatRoom2.getId())
+                        .createCustomer("testUser1")
+                        .build());
     }
 }
