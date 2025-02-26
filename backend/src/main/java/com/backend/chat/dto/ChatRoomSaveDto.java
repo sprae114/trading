@@ -2,6 +2,7 @@ package com.backend.chat.dto;
 
 import com.backend.chat.model.ChatRoom;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 
 import java.time.LocalDateTime;
@@ -11,7 +12,7 @@ public record ChatRoomSaveDto(
         @NotEmpty(message = "채팅방 이름을 입력하세요.")
         String name,
 
-        @NotEmpty(message = "보낸 사람 Id를 입력하세요.")
+        @NotNull(message = "보낸 사람 Id를 입력하세요.")
         Long senderId,
 
         @NotEmpty(message = "보낸 사람을 입력하세요.")
