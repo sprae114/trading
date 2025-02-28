@@ -33,6 +33,8 @@ public enum ErrorCode {
     ALREADY_CHATROOM(HttpStatus.CONFLICT, "이미 채팅방이 존재합니다"),
 
     NOTIFICATION_CONNECT_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SSE 연결을 실패했습니다"),
+    SSE_REQUEST_GET_ERROR(HttpStatus.BAD_REQUEST, "SSE의 잘못된 요청입니다"),
+    SSE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SSE 에러가 발생했습니다"),
 
     DATABASE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "데이터베이스 에러가 발생했습니다"),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 에러가 발생했습니다"),
