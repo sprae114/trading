@@ -37,6 +37,11 @@ public class EmailController {
 
     @GetMapping("/find-pw/auth")
     public String findPasswordAuthEmail(@RequestParam("email") String email) {
+
+        customerRepository.findByEmail(email).orElseThrow(
+                () -> new CustomException(ErrorCode.USER_NOT_FOUND, email)
+        );
+
         String authNumber = authCodeService.generateAuthCode();
         redisService.setKeyWithExpiration(email, authNumber); // 300초 동안 유효
         emailService.sendEmail(email, authNumber);
