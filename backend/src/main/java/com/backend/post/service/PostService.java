@@ -6,14 +6,18 @@ import com.backend.post.dto.request.RegisterPostRequestDto;
 import com.backend.post.dto.request.UpdateRequestDto;
 import com.backend.post.model.entity.Post;
 import com.backend.post.repository.PostRepository;
+import com.backend.user.model.Role;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.backend.post.dto.request.RegisterPostRequestDto.*;
 
@@ -24,6 +28,10 @@ import static com.backend.post.dto.request.RegisterPostRequestDto.*;
 public class PostService {
 
     private final PostRepository postRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper; // ObjectMapper 주입
+
+    private static final String CACHE_KEY_PREFIX = "post:";
 
     public Post create(RegisterPostRequestDto request){
         return postRepository.save(toEntity(request));
@@ -35,22 +43,47 @@ public class PostService {
         );
     }
 
+    public Post getOneWithView(Long postId){
+        String cacheKey = CACHE_KEY_PREFIX + postId;
+
+
+        // 1. Redis에서 캐시 확인
+        Object cachedData = redisTemplate.opsForValue().get(cacheKey);
+        if (cachedData != null) {
+            return objectMapper.convertValue(cachedData, Post.class); // Object를 Post로 변환
+        }
+
+        // 2. 캐시 없으면 MySQL에서 조회
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND, postId.toString()));
+
+        // 3. Redis에 캐싱 만료 설정
+        redisTemplate.opsForValue().set(cacheKey, post, 30, TimeUnit.MINUTES);
+
+        return post;
+    }
+
     public Page<Post> getList(Pageable pageable){
         return postRepository.findAll(pageable);
     }
 
     public Post update(UpdateRequestDto request, Authentication authentication) throws Exception{
+        // 1. 해당 post 찾기
         Post post = postRepository.findById(request.id()).orElseThrow(
                 () -> new CustomException(ErrorCode.POST_NOT_FOUND, request.id().toString())
         );
 
-        if(!post.getCustomerName().equals(authentication.getName())){
+        // 2. 권한 있는지 확인
+        if(!post.getCustomerName().equals(authentication.getName())
+                && authentication.getCredentials().equals(Role.ROLE_CUSTOMER)){
+
             throw new CustomException(ErrorCode.USER_NOT_AUTHORIZED,
                     String.format("post.getCustomerName() : %s, authentication.getName() : %s",
                             post.getCustomerName(), authentication.getName()));
         }
 
 
+        // 3. 수정하기
         Post updatePost = post.toBuilder()
                 .title(request.title())
                 .body(request.body())
@@ -62,16 +95,24 @@ public class PostService {
     }
 
     public void delete(Long postId, Authentication authentication){
+        // 1. 해당 post 찾기
         Post post = postRepository.findById(postId).orElseThrow(
                 () -> new CustomException(ErrorCode.POST_NOT_FOUND, postId.toString())
         );
 
-        if(!post.getCustomerName().equals(authentication.getName())){
+        // 2. 권한 있는지 확인
+        if(!post.getCustomerName().equals(authentication.getName())
+                && authentication.getCredentials().equals(Role.ROLE_CUSTOMER)){
             throw new CustomException(ErrorCode.USER_NOT_AUTHORIZED,
                     String.format("post.getCustomerName() : %s, authentication.getName() : %s",
                             post.getCustomerName(), authentication.getName()));
         }
 
+        // 3. 캐시 정보 삭제
+        String cacheKey = CACHE_KEY_PREFIX + post.getId();
+        redisTemplate.delete(cacheKey);
+
+        // 4. post 삭제
         postRepository.deleteById(postId);
     }
 

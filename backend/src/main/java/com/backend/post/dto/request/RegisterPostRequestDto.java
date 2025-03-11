@@ -26,6 +26,7 @@ public record RegisterPostRequestDto(
                 .body(request.body())
                 .customerId(request.customerId())
                 .customerName(request.customerName())
+                .views(0L)
                 .category(request.category())
                 .tradeStatus(TradeStatus.SALE)
                 .imageUrls(request.imageUrls())

@@ -39,6 +39,8 @@ public class Post extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private TradeStatus tradeStatus;
 
+    private Long views;
+
     @Type(JsonType.class)
     @Column(name = "image_urls", columnDefinition = "json")
     private List<String> imageUrls;
