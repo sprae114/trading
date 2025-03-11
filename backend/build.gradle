@@ -38,7 +38,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-mongodb' // mongodb
 	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'// LocalDateTime 지원
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310' // LocalDateTime 지원
 	implementation 'org.springframework.kafka:spring-kafka' // kafka
+	implementation 'software.amazon.awssdk:s3:2.20.0' // aws s3
 	compileOnly 'org.projectlombok:lombok'
 
 	runtimeOnly 'com.mysql:mysql-connector-j'

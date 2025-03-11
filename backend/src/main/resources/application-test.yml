@@ -36,3 +36,21 @@ spring:
       mail.smtp.auth: true
       mail.smtp.ssl.enable: true
       mail.smtp.ssl.trust: smtp.naver.com
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: chat-group
+
+management:
+  health:
+    mail:
+      enabled: false
+
+aws:
+  s3:
+    endpoint: http://localhost:9000
+    access-key: admin
+    secret-key: password
+    bucket-name: my-bucket
+    region: ap-northeast-1
