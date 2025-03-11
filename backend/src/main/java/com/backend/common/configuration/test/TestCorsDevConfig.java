@@ -19,7 +19,8 @@ public class TestCorsDevConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("https://localhost:3000", "http://localhost:3000"));
+        configuration.setAllowedOrigins(Arrays.asList("https://localhost:3000", "http://localhost:3000",  // vue
+                "https://localhost:9000", "http://localhost:9000")); // s3
         configuration.setAllowedMethods(Collections.singletonList("*"));
         configuration.setAllowCredentials(true);
         configuration.setAllowedHeaders(Collections.singletonList("*"));

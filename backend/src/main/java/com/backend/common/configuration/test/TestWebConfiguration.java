@@ -28,6 +28,7 @@ public class TestWebConfiguration {
                         .requestMatchers("/api/login/**").permitAll()
                         .requestMatchers("/api/post/**").authenticated()
                         .requestMatchers("/api/chat/**").authenticated()
+                        .requestMatchers("api/images/**").authenticated()
                         .anyRequest().permitAll());
 
         http.sessionManagement(sessionConfig ->
