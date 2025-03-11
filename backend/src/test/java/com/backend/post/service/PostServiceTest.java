@@ -1,6 +1,7 @@
 package com.backend.post.service;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import com.backend.common.exception.CustomException;
 import com.backend.common.exception.ErrorCode;
@@ -10,6 +11,9 @@ import com.backend.post.model.PostCategory;
 import com.backend.post.model.TradeStatus;
 import com.backend.post.model.entity.Post;
 import com.backend.post.repository.PostRepository;
+import com.backend.user.model.Role;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,6 +23,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,8 +41,12 @@ class PostServiceTest {
     @Autowired
     private PostService postService;
 
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate; // RedisTemplate 주입
 
-    private RegisterPostRequestDto registerRequest;
+    @Autowired
+    private ObjectMapper objectMapper; // ObjectMapper 주입
+
     private Post post;
 
     @Mock
@@ -48,7 +57,7 @@ class PostServiceTest {
 
     @BeforeEach
     void setUp() {
-        // 필요한 경우 초기화 로직 추가 (현재는 PostRepository 직접 사용하므로 필요 없음)
+        redisTemplate.getConnectionFactory().getConnection().flushAll(); // 캐시 초기화
         postRepository.deleteAll();
         request = new RegisterPostRequestDto(
                 "Title1",
@@ -154,6 +163,35 @@ class PostServiceTest {
     }
 
     @Test
+    @DisplayName("게시글 수정 : 성공")
+    void updatePostAdminTest() throws Exception{
+        // Given
+        Post savedPost = postService.create(request);
+
+        String expectedUsername = "Admin User";
+        when(authentication.getName()).thenReturn(expectedUsername);
+        when(authentication.getCredentials()).thenReturn(Role.ROLE_ADMIN);
+
+        UpdateRequestDto updateRequest = new UpdateRequestDto(
+                savedPost.getId(),
+                "Updated Title",
+                "Updated Body",
+                PostCategory.FOOD,
+                List.of("newUrl1", "newUrl2")
+        );
+
+        // When
+        Post updatedPost = postService.update(updateRequest, authentication);
+
+        // Then
+        assertEquals(updateRequest.id(), updatedPost.getId());
+        assertEquals(updateRequest.title(), updatedPost.getTitle());
+        assertEquals(updateRequest.body(), updatedPost.getBody());
+        assertEquals(updateRequest.category(), updatedPost.getCategory());
+        assertEquals(updateRequest.imageUrls(), updatedPost.getImageUrls());
+    }
+
+    @Test
     @DisplayName("게시글 수정 : 실패(다른 아이디)")
     void updatePostNotMatchCustomer() throws Exception {
         // Given
@@ -161,6 +199,7 @@ class PostServiceTest {
 
         String expectedUsername = "Test!!!";
         when(authentication.getName()).thenReturn(expectedUsername);
+        when(authentication.getCredentials()).thenReturn(Role.ROLE_CUSTOMER);
 
         UpdateRequestDto updateRequest = new UpdateRequestDto(
                 savedPost.getId(),
@@ -201,6 +240,23 @@ class PostServiceTest {
         Post savedPost = postService.create(request);
         String expectedUsername = "Test User";
         when(authentication.getName()).thenReturn(expectedUsername);
+        when(authentication.getCredentials()).thenReturn(Role.ROLE_CUSTOMER);
+
+        // When
+        postService.delete(savedPost.getId(), authentication);
+
+        // Then
+        assertFalse(postRepository.findById(savedPost.getId()).isPresent());
+    }
+
+    @Test
+    @DisplayName("게시글 삭제 : 성공(관리자)")
+    void deletePostAdminTest() {
+        // Given
+        Post savedPost = postService.create(request);
+        String expectedUsername = "Admin";
+        when(authentication.getName()).thenReturn(expectedUsername);
+        when(authentication.getCredentials()).thenReturn(Role.ROLE_ADMIN);
 
         // When
         postService.delete(savedPost.getId(), authentication);
@@ -216,6 +272,7 @@ class PostServiceTest {
         Post savedPost = postService.create(request);
         String expectedUsername = "Test!!";
         when(authentication.getName()).thenReturn(expectedUsername);
+        when(authentication.getCredentials()).thenReturn(Role.ROLE_CUSTOMER);
 
         // When
         CustomException exception = assertThrows(CustomException.class, () -> postService.delete(savedPost.getId(), authentication));
@@ -235,5 +292,68 @@ class PostServiceTest {
 
         //then
         assertEquals(result.size(), 2);
+    }
+
+    @Test
+    @DisplayName("게시글 조회 with Redis 캐시 : 성공 - 캐시 없음")
+    void getOneWithViewNoCacheTest() throws JsonProcessingException {
+        // Given
+        Post savedPost = postRepository.save(RegisterPostRequestDto.toEntity(request));
+        String cacheKey = "post:" + savedPost.getId();
+
+        // When
+        Post foundPost = postService.getOneWithView(savedPost.getId());
+
+        // Then
+        assertNotNull(foundPost);
+        assertEquals(savedPost.getId(), foundPost.getId());
+        assertEquals(savedPost.getTitle(), foundPost.getTitle());
+
+        // Redis에 캐싱되었는지 확인
+        // 캐시에서 가져왔는지 확인 (DB 조회 없이 캐시에서 바로 반환)
+        String s = objectMapper.writeValueAsString(redisTemplate.opsForValue().get(cacheKey));
+        Post cachedPost = objectMapper.readValue(s, Post.class);
+        assertNotNull(cachedPost);
+        assertEquals(savedPost.getId(), cachedPost.getId());
+    }
+
+    @Test
+    @DisplayName("게시글 조회 with Redis 캐시 : 성공 - 캐시 있음")
+    void getOneWithViewWithCacheTest() throws JsonProcessingException {
+        // Given
+        Post savedPost = postRepository.save(RegisterPostRequestDto.toEntity(request));
+        String cacheKey = "post:" + savedPost.getId();
+        redisTemplate.opsForValue().set(cacheKey, savedPost, 30, TimeUnit.MINUTES);
+
+        // When
+        Post foundPost = postService.getOneWithView(savedPost.getId());
+
+        // Then
+        assertNotNull(foundPost);
+        assertEquals(savedPost.getId(), foundPost.getId());
+        assertEquals(savedPost.getTitle(), foundPost.getTitle());
+
+        // 캐시에서 가져왔는지 확인 (DB 조회 없이 캐시에서 바로 반환)
+        String s = objectMapper.writeValueAsString(redisTemplate.opsForValue().get(cacheKey));
+        Post cachedPost = objectMapper.readValue(s, Post.class);
+
+        assertNotNull(cachedPost);
+        assertEquals(savedPost.getId(), cachedPost.getId());
+    }
+
+    @Test
+    @DisplayName("게시글 조회 with Redis 캐시 : 실패 - 존재하지 않는 ID")
+    void getOneWithViewNotFoundTest() {
+        // Given
+        Long nonExistingPostId = 999L;
+        String cacheKey = "post:" + nonExistingPostId;
+
+        // When & Then
+        CustomException exception = assertThrows(CustomException.class, () ->
+                postService.getOneWithView(nonExistingPostId));
+        assertEquals(ErrorCode.POST_NOT_FOUND, exception.getErrorCode());
+
+        // Redis에 캐시가 생성되지 않았는지 확인
+        assertNull(redisTemplate.opsForValue().get(cacheKey));
     }
 }
