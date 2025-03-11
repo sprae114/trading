@@ -7,6 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 
 import com.backend.user.dto.request.AuthRequestDto;
+import com.backend.user.dto.request.RegisterCustomerRequest;
+import com.backend.user.model.entity.Customer;
+import com.backend.user.repository.CustomerRepository;
 import com.backend.user.service.AuthCodeService;
 import com.backend.user.service.EmailService;
 import com.backend.common.service.RedisService;
@@ -14,14 +17,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Optional;
+
+@ExtendWith(SpringExtension.class)
 @SpringBootTest
 @AutoConfigureMockMvc
 public class EmailControllerTest {
@@ -34,6 +42,9 @@ public class EmailControllerTest {
 
     @Autowired
     private EmailService emailService;
+
+    @MockBean
+    private CustomerRepository customerRepository;
 
     @MockBean
     private JavaMailSender mailSender;
@@ -135,11 +146,11 @@ public class EmailControllerTest {
         String authNumber = "654321";
 
         when(authCodeService.generateAuthCode()).thenReturn(authNumber);
+        when(customerRepository.findByEmail(anyString())).thenReturn(Optional.of(new Customer()));
         doNothing().when(redisService).setKeyWithExpiration(anyString(), anyString());
 
         mockMvc.perform(get("/api/login/find-pw/auth")
-                        .param("email", email)
-                        .contentType(MediaType.APPLICATION_JSON))
+                        .param("email", email))
                 .andExpect(status().isOk())
                 .andExpect(content().string("이메일이 전송되었습니다."));
 
@@ -156,7 +167,7 @@ public class EmailControllerTest {
         mockMvc.perform(get("/api/login/find-pw/auth")
                         .param("email", email)
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @DisplayName("비밀번호 찾기 인증 - 성공")
