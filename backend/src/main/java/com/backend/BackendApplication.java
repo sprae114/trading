@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableJpaAuditing
 @SpringBootApplication
@@ -24,6 +25,8 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @EnableMongoRepositories(basePackages = {
 		"com.backend.chat.repository"
 })
+
+@EnableScheduling
 public class BackendApplication {
 
 	public static void main(String[] args) {
