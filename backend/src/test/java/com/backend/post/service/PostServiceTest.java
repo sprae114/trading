@@ -1,5 +1,7 @@
 package com.backend.post.service;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -25,6 +27,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -142,7 +145,8 @@ class PostServiceTest {
 
         String expectedUsername = "Test User";
         when(authentication.getName()).thenReturn(expectedUsername);
-        when(authentication.getCredentials()).thenReturn(Role.ROLE_CUSTOMER);
+        when(authentication.getAuthorities())
+                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
 
         UpdateRequestDto updateRequest = new UpdateRequestDto(
                 savedPost.getId(),
@@ -171,7 +175,8 @@ class PostServiceTest {
 
         String expectedUsername = "Admin User";
         when(authentication.getName()).thenReturn(expectedUsername);
-        when(authentication.getCredentials()).thenReturn(Role.ROLE_ADMIN);
+        when(authentication.getAuthorities())
+                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN")));
 
         UpdateRequestDto updateRequest = new UpdateRequestDto(
                 savedPost.getId(),
@@ -200,7 +205,8 @@ class PostServiceTest {
 
         String expectedUsername = "Test!!!";
         when(authentication.getName()).thenReturn(expectedUsername);
-        when(authentication.getCredentials()).thenReturn(Role.ROLE_CUSTOMER);
+        when(authentication.getAuthorities())
+                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
 
         UpdateRequestDto updateRequest = new UpdateRequestDto(
                 savedPost.getId(),
@@ -241,7 +247,8 @@ class PostServiceTest {
         Post savedPost = postService.create(request);
         String expectedUsername = "Test User";
         when(authentication.getName()).thenReturn(expectedUsername);
-        when(authentication.getCredentials()).thenReturn(Role.ROLE_CUSTOMER);
+        when(authentication.getAuthorities())
+                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
 
         // When
         postService.delete(savedPost.getId(), authentication);
@@ -257,7 +264,8 @@ class PostServiceTest {
         Post savedPost = postService.create(request);
         String expectedUsername = "Admin";
         when(authentication.getName()).thenReturn(expectedUsername);
-        when(authentication.getCredentials()).thenReturn(Role.ROLE_ADMIN);
+        when(authentication.getAuthorities())
+                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN")));
 
         // When
         postService.delete(savedPost.getId(), authentication);
@@ -273,7 +281,8 @@ class PostServiceTest {
         Post savedPost = postService.create(request);
         String expectedUsername = "Test!!";
         when(authentication.getName()).thenReturn(expectedUsername);
-        when(authentication.getCredentials()).thenReturn(Role.ROLE_CUSTOMER);
+        when(authentication.getAuthorities())
+                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
 
         // When
         CustomException exception = assertThrows(CustomException.class, () -> postService.delete(savedPost.getId(), authentication));
