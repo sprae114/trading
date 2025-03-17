@@ -13,11 +13,8 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Utilities;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetUrlRequest;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
 import java.net.URL;
@@ -152,5 +149,93 @@ class S3ServiceTest {
         // then
         assertTrue(result.isEmpty());
         verify(s3Client, times(1)).getObjectAsBytes(any(GetObjectRequest.class));
+    }
+
+    @Test
+    @DisplayName("단일 파일 삭제: 성공")
+    void deleteFile_Success() {
+        // Given
+        String fileName = "test.txt";
+
+        // When
+        s3Service.deleteFile(fileName);
+
+        // Then
+        verify(s3Client, times(1)).deleteObject(any(DeleteObjectRequest.class));
+    }
+
+    @Test
+    @DisplayName("단일 파일 삭제: 실패(유효하지 않은 파일 이름)")
+    void deleteFile_Failure_InvalidName() {
+        // Given
+        String fileName = null;
+
+        // When
+        s3Service.deleteFile(fileName);
+
+        // Then
+        verify(s3Client, never()).deleteObject(any(DeleteObjectRequest.class));
+    }
+
+    @Test
+    @DisplayName("단일 파일 삭제: 실패(S3 예외)")
+    void deleteFile_Failure_Exception() {
+        // Given
+        String fileName = "test.txt";
+        when(s3Client.deleteObject(any(DeleteObjectRequest.class)))
+                .thenThrow(S3Exception.builder().message("Access Denied").statusCode(403).build());
+
+        // When & Then
+        CustomException exception = assertThrows(CustomException.class, () ->
+                s3Service.deleteFile(fileName)
+        );
+
+        assertEquals(ErrorCode.AWS_S3_DELETE_FAIL, exception.getErrorCode());
+        verify(s3Client, times(1)).deleteObject(any(DeleteObjectRequest.class));
+    }
+
+    @Test
+    @DisplayName("다중 파일 삭제: 성공")
+    void deleteFiles_Success() {
+        // Given
+        List<String> fileNames = List.of("test1.txt", "test2.txt");
+
+        when(s3Client.deleteObjects(any(DeleteObjectsRequest.class))).thenReturn(mock(DeleteObjectsResponse.class));
+
+        // When
+        s3Service.deleteFiles(fileNames);
+
+        // Then
+        verify(s3Client, times(1)).deleteObjects(any(DeleteObjectsRequest.class));
+    }
+
+    @Test
+    @DisplayName("다중 파일 삭제: 성공(빈 파일 목록)")
+    void deleteFiles_EmptyFiles() {
+        // Given
+        List<String> fileNames = Collections.emptyList();
+
+        // When
+        s3Service.deleteFiles(fileNames);
+
+        // Then
+        verify(s3Client, never()).deleteObjects(any(DeleteObjectsRequest.class));
+    }
+
+    @Test
+    @DisplayName("다중 파일 삭제: 실패(S3 예외)")
+    void deleteFiles_Failure_Exception() {
+        // Given
+        List<String> fileNames = List.of("test1.txt", "test2.txt");
+        when(s3Client.deleteObjects(any(DeleteObjectsRequest.class)))
+                .thenThrow(S3Exception.builder().message("Access Denied").statusCode(403).build());
+
+        // When & Then
+        CustomException exception = assertThrows(CustomException.class, () ->
+                s3Service.deleteFiles(fileNames)
+        );
+
+        assertEquals(ErrorCode.AWS_S3_DELETE_FAIL, exception.getErrorCode());
+        verify(s3Client, times(1)).deleteObjects(any(DeleteObjectsRequest.class));
     }
 }
