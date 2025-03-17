@@ -32,13 +32,12 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-mail' // Email
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.5' // JWT
 	implementation 'io.github.cdimascio:dotenv-java:3.1.0' // 환경변수
-	implementation 'com.fasterxml.jackson.core:jackson-databind' // Jackson
+	implementation 'com.fasterxml.jackson.core:jackson-databind' // json 변환
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310' // 날짜 json 변환
 	implementation 'io.hypersistence:hypersistence-utils-hibernate-63:3.9.1'
 	implementation 'org.springframework.boot:spring-boot-starter-websocket' // websocket
 	implementation 'org.springframework.boot:spring-boot-starter-data-mongodb' // mongodb
-	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
-	implementation 'org.springframework.boot:spring-boot-starter-actuator'// LocalDateTime 지원
-	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310' // LocalDateTime 지원
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.kafka:spring-kafka' // kafka
 	implementation 'software.amazon.awssdk:s3:2.20.0' // aws s3
 	compileOnly 'org.projectlombok:lombok'

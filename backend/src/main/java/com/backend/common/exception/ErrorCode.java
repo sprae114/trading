@@ -42,6 +42,9 @@ public enum ErrorCode {
     AWS_S3_UPLOAD_FAIL(HttpStatus.BAD_REQUEST , "파일 업로드 중 오류 발생했습니다"),
     AWS_S3_DOWNLOAD_FAIL(HttpStatus.BAD_REQUEST, "파일 다운로드 중 오류 발생했습니다"),
     AWS_S3_NOT_FOUND_KEY(HttpStatus.NOT_FOUND, "해당 파일이 존재하지 않습니다"),
+
+    SERIALIZER_ERROR(HttpStatus.BAD_REQUEST, "직렬화에서 에러가 발생했습니다"),
+    DESERIALIZER_ERROR(HttpStatus.BAD_REQUEST, "역직렬화에서 에러가 발생했습니다"),
     ;
 
     private final HttpStatus status;
