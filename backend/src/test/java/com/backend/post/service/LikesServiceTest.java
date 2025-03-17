@@ -4,14 +4,23 @@ import com.backend.common.exception.CustomException;
 import com.backend.common.exception.ErrorCode;
 import com.backend.post.model.entity.Likes;
 import com.backend.post.repository.LikesRepository;
+import com.backend.user.model.Role;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.Collections;
+
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @Transactional
@@ -22,6 +31,9 @@ class LikesServiceTest {
 
     @Autowired
     private LikesRepository likesRepository;
+
+    @Mock
+    private Authentication authentication;
 
     @BeforeEach
     void setUp() {
@@ -125,7 +137,7 @@ class LikesServiceTest {
 
 
     @Test
-    @DisplayName("사용자 ID로 좋아요 목록 삭제 : 성공")
+    @DisplayName("admin으로 좋아요 목록 삭제 : 성공")
     void deleteListLikesSuccess() {
         // Given
         Long postId1 = 1L;
@@ -134,8 +146,11 @@ class LikesServiceTest {
         likesService.create(postId1, customerId); // 좋아요 생성
         likesService.create(postId2, customerId); // 좋아요 생성
 
+        when(authentication.getName()).thenReturn("admin");
+        when(authentication.getAuthorities()).thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN")));
+
         // When
-        likesService.deleteList(customerId);
+        likesService.deleteList(customerId, authentication);
 
         // Then
         assertFalse(likesRepository.findByPostIdAndCustomerId(postId1, customerId).isPresent());
@@ -148,10 +163,33 @@ class LikesServiceTest {
     void deleteListLikesNotFound() {
         //Given
         Long customerId = 1L;
+        when(authentication.getName()).thenReturn("admin");
+         when(authentication.getAuthorities())
+                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN")));
 
         // When: 존재하지 않는 좋아요 삭제 시도
-        likesService.deleteList(customerId);
+        likesService.deleteList(customerId, authentication);
 
         // Then: 아무일도 일어나지 않음 (예외 발생 X)
     }
+
+    @Test
+    @DisplayName("사용자 ID로 좋아요 목록 삭제 - 좋아요 없음")
+    void deleteListLikesNotAdmin() {
+        //Given
+        Long postId1 = 1L;
+        Long postId2 = 2L;
+        Long customerId = 1L;
+        likesService.create(postId1, customerId); // 좋아요 생성
+        likesService.create(postId2, customerId); // 좋아요 생성
+        when(authentication.getName()).thenReturn("customer");
+         when(authentication.getAuthorities())
+                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
+
+        // When: 존재하지 않는 좋아요 삭제 시도
+        likesService.deleteList(customerId, authentication);
+
+        // Then: 아무일도 일어나지 않음 (예외 발생 X)
+    }
+    
 }

@@ -4,10 +4,12 @@ import com.backend.common.exception.CustomException;
 import com.backend.common.exception.ErrorCode;
 import com.backend.post.model.entity.Likes;
 import com.backend.post.repository.LikesRepository;
+import com.backend.user.model.Role;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -52,7 +54,16 @@ public class LikesService {
         likesRepository.deleteByPostIdAndCustomerId(likes.getPostId(), customerId);
     }
 
-    public void deleteList(Long customerId){
-        likesRepository.deleteAllByCustomerId(customerId);
+    public void deleteList(Long customerId, Authentication authentication){
+        System.out.println(">>> Role : " + authentication.getAuthorities());
+        System.out.println(">>> boolean : " + authentication.getAuthorities().stream()
+                .anyMatch(role ->
+                        role.getAuthority().equals(Role.ROLE_ADMIN.toString())));
+
+        if (authentication.getAuthorities().stream()
+                .anyMatch(role ->
+                        role.getAuthority().equals(Role.ROLE_ADMIN.toString()))) { // 관리자인 경우에만 가능하도록 설정
+            likesRepository.deleteAllByCustomerId(customerId);
+        }
     }
 }

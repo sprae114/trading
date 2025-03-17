@@ -84,7 +84,7 @@ public class PostController {
     }
 
     @DeleteMapping("/{postId}/like")
-    public ResponseEntity<Void> deleteLike(@PathVariable Long postId, Long customerId, Authentication authentication) throws Exception {
+    public ResponseEntity<Void> deleteLike(@PathVariable Long postId, Long customerId) throws Exception {
 
         likesService.deleteOne(postId, customerId);
         return ResponseEntity.ok().build();
