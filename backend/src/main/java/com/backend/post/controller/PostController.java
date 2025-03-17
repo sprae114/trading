@@ -1,11 +1,15 @@
 package com.backend.post.controller;
 
+import com.backend.common.model.RedisRequest;
+import com.backend.common.service.RedisService;
 import com.backend.post.dto.request.RegisterPostRequestDto;
 import com.backend.post.dto.request.UpdateRequestDto;
 import com.backend.post.dto.response.PostResponseDto;
 import com.backend.post.model.entity.Likes;
 import com.backend.post.service.LikesService;
 import com.backend.post.service.PostService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,6 +28,8 @@ public class PostController {
 
     private final PostService postService;
     private final LikesService likesService;
+    private final RedisService redisService;
+    private final ObjectMapper objectMapper;
 
 
     @GetMapping
@@ -40,11 +46,20 @@ public class PostController {
     }
 
     @GetMapping("/{postId}")
-    public ResponseEntity<PostResponseDto> getPostOne(@PathVariable Long postId){
+    public ResponseEntity<PostResponseDto> getPostOne(@PathVariable Long postId) throws JsonProcessingException {
+        // redis
+        PostResponseDto postResponseDto = PostResponseDto.from(postService.getOne(postId));
+        String key = "post:" + postResponseDto.id();
+
+        if (redisService.get(key) != null) {
+            redisService.setKeyWithExpiration(key, makeRedisValue(postResponseDto), 6000L);
+        }
+
         return ResponseEntity
                 .ok()
                 .body(PostResponseDto.from(postService.getOne(postId)));
     }
+
 
     @PutMapping("/{postId}")
     public ResponseEntity<Void> updatePost(@PathVariable Long postId,
@@ -69,7 +84,7 @@ public class PostController {
     }
 
     @DeleteMapping("/{postId}/like")
-    public ResponseEntity<Void> deleteLike(@PathVariable Long postId, Long customerId) throws Exception {
+    public ResponseEntity<Void> deleteLike(@PathVariable Long postId, Long customerId, Authentication authentication) throws Exception {
 
         likesService.deleteOne(postId, customerId);
         return ResponseEntity.ok().build();
@@ -88,5 +103,15 @@ public class PostController {
                         .stream()
                         .map(PostResponseDto::from)
                         .toList());
+    }
+
+
+    private String makeRedisValue(PostResponseDto postResponseDto) throws JsonProcessingException {
+        RedisRequest redisRequest = RedisRequest.builder()
+                .id(postResponseDto.id())
+                .views(postResponseDto.views()+1) // 조회 +1한 후, 저장
+                .build();
+
+        return objectMapper.writeValueAsString(redisRequest);
     }
 }

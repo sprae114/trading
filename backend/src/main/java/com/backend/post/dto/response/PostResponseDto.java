@@ -14,6 +14,7 @@ public record PostResponseDto(
         Long customerId,
         String customerName,
         PostCategory category,
+        Long views,
         List<String> imageUrls
 ) {
     public static PostResponseDto from(Post post){
@@ -25,6 +26,7 @@ public record PostResponseDto(
                 .customerId(post.getCustomerId())
                 .customerName(post.getCustomerName())
                 .category(post.getCategory())
+                .views(post.getViews())
                 .imageUrls(post.getImageUrls())
                 .build();
     }

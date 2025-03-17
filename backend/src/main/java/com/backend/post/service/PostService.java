@@ -73,25 +73,24 @@ public class PostService {
                 () -> new CustomException(ErrorCode.POST_NOT_FOUND, request.id().toString())
         );
 
-        // 2. 권한 있는지 확인
-        if(!post.getCustomerName().equals(authentication.getName())
-                && authentication.getCredentials().equals(Role.ROLE_CUSTOMER)){
+        if (authentication.getAuthorities().stream()
+                .anyMatch(role -> role.getAuthority().equals(Role.ROLE_ADMIN.toString()))
+                || post.getCustomerName().equals(authentication.getName())) {
 
+            Post updatePost = post.toBuilder()
+                    .title(request.title())
+                    .body(request.body())
+                    .category(request.category())
+                    .imageUrls(request.imageUrls())
+                    .build();
+
+            return postRepository.save(updatePost);
+
+        } else {
             throw new CustomException(ErrorCode.USER_NOT_AUTHORIZED,
                     String.format("post.getCustomerName() : %s, authentication.getName() : %s",
                             post.getCustomerName(), authentication.getName()));
         }
-
-
-        // 3. 수정하기
-        Post updatePost = post.toBuilder()
-                .title(request.title())
-                .body(request.body())
-                .category(request.category())
-                .imageUrls(request.imageUrls())
-                .build();
-
-        return postRepository.save(updatePost);
     }
 
     public void delete(Long postId, Authentication authentication){
@@ -100,20 +99,20 @@ public class PostService {
                 () -> new CustomException(ErrorCode.POST_NOT_FOUND, postId.toString())
         );
 
-        // 2. 권한 있는지 확인
-        if(!post.getCustomerName().equals(authentication.getName())
-                && authentication.getCredentials().equals(Role.ROLE_CUSTOMER)){
+        if (authentication.getAuthorities().stream()
+                .anyMatch(role -> role.getAuthority().equals(Role.ROLE_ADMIN.toString()))
+                || post.getCustomerName().equals(authentication.getName())) {
+            // 3. 캐시 정보 삭제
+            String cacheKey = CACHE_KEY_PREFIX + post.getId();
+            redisTemplate.delete(cacheKey);
+
+            // 4. post 삭제
+            postRepository.deleteById(postId);
+        } else {
             throw new CustomException(ErrorCode.USER_NOT_AUTHORIZED,
                     String.format("post.getCustomerName() : %s, authentication.getName() : %s",
                             post.getCustomerName(), authentication.getName()));
         }
-
-        // 3. 캐시 정보 삭제
-        String cacheKey = CACHE_KEY_PREFIX + post.getId();
-        redisTemplate.delete(cacheKey);
-
-        // 4. post 삭제
-        postRepository.deleteById(postId);
     }
 
     /**
