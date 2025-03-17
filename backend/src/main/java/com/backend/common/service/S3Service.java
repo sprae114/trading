@@ -2,7 +2,6 @@ package com.backend.common.service;
 
 import com.backend.common.exception.CustomException;
 import com.backend.common.exception.ErrorCode;
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -52,6 +51,60 @@ public class S3Service {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
+
+    // 첫번째 찾은 파일만 가져오기
+    public byte[] downloadFirstFile(String fileName) {
+        return downloadImage(fileName);
+    }
+
+    // 단일 파일 삭제
+    public void deleteFile(String fileName) {
+        if (fileName == null || fileName.isEmpty()) {
+            return;
+        }
+
+        try {
+            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(fileName)
+                    .build();
+
+            s3Client.deleteObject(deleteObjectRequest);
+
+        } catch (Exception e) {
+            log.error("버킷 '{}'에서 파일 삭제 실패: {}", bucketName, fileName, e);
+            throw new CustomException(ErrorCode.AWS_S3_DELETE_FAIL, e.getMessage());
+        }
+    }
+
+    // 다중 파일 삭제
+    public void deleteFiles(List<String> fileNames) {
+        if (fileNames == null || fileNames.isEmpty()) {
+            return;
+        }
+
+        List<ObjectIdentifier> keys = fileNames.stream()
+                .filter(fileName -> fileName != null && !fileName.isEmpty())
+                .map(fileName -> ObjectIdentifier.builder().key(fileName).build())
+                .collect(Collectors.toList());
+
+        if (keys.isEmpty()) {
+            return;
+        }
+
+        try {
+            DeleteObjectsRequest deleteObjectsRequest = DeleteObjectsRequest.builder()
+                    .bucket(bucketName)
+                    .delete(Delete.builder().objects(keys).build())
+                    .build();
+
+            DeleteObjectsResponse response = s3Client.deleteObjects(deleteObjectsRequest);
+        } catch (Exception e) {
+            log.error("버킷 '{}'에서 파일 삭제 실패", bucketName, e);
+            throw new CustomException(ErrorCode.AWS_S3_DELETE_FAIL, e.getMessage());
+        }
+    }
+
 
     private String uploadImage(MultipartFile file) throws IOException {
         String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
