@@ -35,6 +35,10 @@ public class RedisService {
         redisTemplate.opsForValue().set(key, value, TIME_OUT, TimeUnit.SECONDS);
     }
 
+    public void setKeyWithExpiration(String key, String value, Long timeOut) {
+        redisTemplate.opsForValue().set(key, value, timeOut, TimeUnit.SECONDS);
+    }
+
     public void delete(String key){
         redisTemplate.delete(key);
     }
