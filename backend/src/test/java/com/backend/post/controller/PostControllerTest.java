@@ -8,6 +8,7 @@ import com.backend.post.repository.LikesRepository;
 import com.backend.post.repository.PostRepository;
 import com.backend.post.service.LikesService;
 import com.backend.post.service.PostService;
+import com.backend.user.model.Role;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,8 +20,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -48,8 +52,6 @@ class PostControllerTest {
     @Autowired
     private LikesService likesService;
 
-    @Mock
-    private Authentication authentication;
 
     private Post post1;
     private Post post2;
@@ -142,9 +144,21 @@ class PostControllerTest {
 
     @Test
     @DisplayName("게시글 수정 : 성공")
-    @WithMockUser(username = "김")
+    @WithMockUser(username = "김", roles = "CUSTOMER")
     void updatePostTest() throws Exception {
-        when(authentication.getName()).thenReturn("김");
+
+        UpdateRequestDto updateRequestDto = new UpdateRequestDto(post1.getId(), "수정된 제목", "수정된 내용");
+
+        mockMvc.perform(put("/api/post/{postId}", post1.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequestDto)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("게시글 수정 : 성공(관리자)")
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    void updatePostAdminTest() throws Exception {
 
         UpdateRequestDto updateRequestDto = new UpdateRequestDto(post1.getId(), "수정된 제목", "수정된 내용");
 
@@ -156,14 +170,13 @@ class PostControllerTest {
 
     @Test
     @DisplayName("게시글 수정 : 실패 (권한 없음)")
-    @WithMockUser(username = "otheruser") // 다른 사용자 이름 지정
+    @WithMockUser(username = "권한없음", roles = "CUSTOMER") // 다른 사용자 이름 지정
     void updatePostFail() throws Exception {
         UpdateRequestDto updateRequestDto = new UpdateRequestDto(post1.getId(),"수정된 제목", "수정된 내용");
 
         mockMvc.perform(put("/api/post/{postId}", post1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updateRequestDto))
-                        .principal(authentication)) // principal 설정은 유지
+                        .content(objectMapper.writeValueAsString(updateRequestDto))) // principal 설정은 유지
                 .andExpect(status().isUnauthorized());
     }
 
@@ -171,22 +184,26 @@ class PostControllerTest {
 
     @Test
     @DisplayName("게시글 삭제 : 성공")
-    @WithMockUser(username = "김")
+    @WithMockUser(username = "김", roles = "CUSTOMER")
     void deletePostTest() throws Exception {
-        when(authentication.getName()).thenReturn("김");
-
         mockMvc.perform(delete("/api/post/{postId}", post1.getId()))
                 .andExpect(status().isOk());
     }
 
+    @Test
+    @DisplayName("게시글 삭제 : 성공(관리자)")
+    @WithMockUser(username = "김", roles = "ADMIN")
+    void deletePostAdminTest() throws Exception {
+        mockMvc.perform(delete("/api/post/{postId}", post1.getId()))
+                .andExpect(status().isOk());
+    }
 
     @Test
     @DisplayName("게시글 삭제 : 실패 (권한 없음)")
-    @WithMockUser(username = "otheruser")
-    void deletePostFail() throws Exception {
+    @WithMockUser(username = "권한없음", roles = "CUSTOMER")
+    void deletePostFail() throws Exception {// 작성자와 다름
 
-        mockMvc.perform(delete("/api/post/{postId}", post1.getId())
-                        .principal(authentication)) //여전히 필요
+        mockMvc.perform(delete("/api/post/{postId}", post1.getId())) //여전히 필요
                 .andExpect(status().isUnauthorized());
     }
 
@@ -194,7 +211,7 @@ class PostControllerTest {
 
     @Test
     @DisplayName("좋아요 추가 : 성공")
-    @WithMockUser
+    @WithMockUser(username = "김", roles = "CUSTOMER")
     void saveLikeTest() throws Exception {
         Long customerId = 1L;
 
@@ -206,7 +223,7 @@ class PostControllerTest {
 
     @Test
     @DisplayName("좋아요 삭제 : 성공")
-    @WithMockUser
+    @WithMockUser(username = "김", roles = "CUSTOMER")
     void deleteLikeTest() throws Exception {
         Long customerId = 1L;
         likesService.create(post1.getId(), customerId);
@@ -218,7 +235,7 @@ class PostControllerTest {
 
     @Test
     @DisplayName("좋아요 게시글 목록 조회 : 성공")
-    @WithMockUser
+    @WithMockUser(username = "김", roles = "CUSTOMER")
     void getLikesPostTest() throws Exception {
         Long customerId = 1L;
         likesService.create(post1.getId(), customerId);

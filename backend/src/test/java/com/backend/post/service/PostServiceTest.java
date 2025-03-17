@@ -142,6 +142,7 @@ class PostServiceTest {
 
         String expectedUsername = "Test User";
         when(authentication.getName()).thenReturn(expectedUsername);
+        when(authentication.getCredentials()).thenReturn(Role.ROLE_CUSTOMER);
 
         UpdateRequestDto updateRequest = new UpdateRequestDto(
                 savedPost.getId(),
