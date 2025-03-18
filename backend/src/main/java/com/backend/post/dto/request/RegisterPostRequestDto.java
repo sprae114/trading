@@ -5,6 +5,7 @@ import com.backend.post.model.TradeStatus;
 import com.backend.post.model.entity.Post;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Builder;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -18,9 +19,9 @@ public record RegisterPostRequestDto(
     Long customerId,
     String customerName,
     PostCategory category,
-    List<String> imageUrls
+    MultipartFile[] imageFiles
 ) {
-    public static Post toEntity(RegisterPostRequestDto request){
+    public static Post toEntity(RegisterPostRequestDto request, List<String> uploadKeys) {
         return Post.builder()
                 .title(request.title())
                 .body(request.body())
@@ -29,7 +30,8 @@ public record RegisterPostRequestDto(
                 .views(0L)
                 .category(request.category())
                 .tradeStatus(TradeStatus.SALE)
-                .imageUrls(request.imageUrls())
+                .views(0L)
+                .imageUrls(uploadKeys)
                 .build();
     }
 }

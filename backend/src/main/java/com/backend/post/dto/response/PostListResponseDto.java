@@ -6,28 +6,30 @@ import lombok.Builder;
 
 import java.util.List;
 
+
 @Builder
-public record PostResponseDto(
+public record PostListResponseDto(
         Long id,
         String title,
         String body,
         Long customerId,
         String customerName,
         PostCategory category,
-        Long likeCount,
         Long views,
+        Long likesCount,
         List<byte[]> images
 ) {
-    public static PostResponseDto from(Post post, Long postViews, Long likeCount, List<byte[]> downImages) {
-        return PostResponseDto.builder()
+    public static PostListResponseDto from(Post post, Long RedisPostViews, Long RedisLikeCount, List<byte[]> downImages) {
+        return PostListResponseDto
+                .builder()
                 .id(post.getId())
                 .title(post.getTitle())
                 .body(post.getBody())
                 .customerId(post.getCustomerId())
                 .customerName(post.getCustomerName())
                 .category(post.getCategory())
-                .views(postViews)
-                .likeCount(likeCount)
+                .views(RedisPostViews)
+                .likesCount(RedisLikeCount)
                 .images(downImages)
                 .build();
     }
