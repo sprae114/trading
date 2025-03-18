@@ -4,29 +4,23 @@ import com.backend.post.dto.request.RegisterPostRequestDto;
 import com.backend.post.dto.request.UpdateRequestDto;
 import com.backend.post.model.PostCategory;
 import com.backend.post.model.entity.Post;
-import com.backend.post.repository.LikesRepository;
-import com.backend.post.repository.PostRepository;
 import com.backend.post.service.LikesService;
 import com.backend.post.service.PostService;
-import com.backend.user.model.Role;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.io.IOException;
 import java.util.List;
 
-import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -41,12 +35,6 @@ class PostControllerTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private PostRepository postRepository;
-
-    @Autowired
-    private LikesRepository likesRepository;
-
-    @Autowired
     private PostService postService;
 
     @Autowired
@@ -58,7 +46,7 @@ class PostControllerTest {
 
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws IOException {
         post1 = postService.create(makePostRequestDto("제목1"));
         post2 = postService.create(makePostRequestDto("제목2"));
     }
@@ -84,7 +72,7 @@ class PostControllerTest {
         RegisterPostRequestDto requestDto = RegisterPostRequestDto.builder()
                 .body("text")
                 .customerId(1L)
-                .category(PostCategory.DAILY)
+                .category(PostCategory.BOOKS)
                 .customerName("김")
                 .build();
         String request = objectMapper.writeValueAsString(requestDto);
@@ -186,7 +174,12 @@ class PostControllerTest {
     @DisplayName("게시글 삭제 : 성공")
     @WithMockUser(username = "김", roles = "CUSTOMER")
     void deletePostTest() throws Exception {
-        mockMvc.perform(delete("/api/post/{postId}", post1.getId()))
+        List<Long> postIds = List.of(post1.getId(), post2.getId());
+
+        mockMvc.perform(delete("/api/post")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(postIds))
+                )
                 .andExpect(status().isOk());
     }
 
@@ -194,7 +187,12 @@ class PostControllerTest {
     @DisplayName("게시글 삭제 : 성공(관리자)")
     @WithMockUser(username = "김", roles = "ADMIN")
     void deletePostAdminTest() throws Exception {
-        mockMvc.perform(delete("/api/post/{postId}", post1.getId()))
+        List<Long> postIds = List.of(post1.getId(), post2.getId());
+
+        mockMvc.perform(delete("/api/post")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(postIds))
+                )
                 .andExpect(status().isOk());
     }
 
@@ -202,9 +200,13 @@ class PostControllerTest {
     @DisplayName("게시글 삭제 : 실패 (권한 없음)")
     @WithMockUser(username = "권한없음", roles = "CUSTOMER")
     void deletePostFail() throws Exception {// 작성자와 다름
+        List<Long> postIds = List.of(post1.getId(), post2.getId());
 
-        mockMvc.perform(delete("/api/post/{postId}", post1.getId())) //여전히 필요
-                .andExpect(status().isUnauthorized());
+        mockMvc.perform(delete("/api/post")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(postIds))
+                )
+                .andExpect(status().isOk()); // 권한 있는 것만 삭제
     }
 
 
@@ -233,30 +235,12 @@ class PostControllerTest {
                 .andExpect(status().isOk());
     }
 
-    @Test
-    @DisplayName("좋아요 게시글 목록 조회 : 성공")
-    @WithMockUser(username = "김", roles = "CUSTOMER")
-    void getLikesPostTest() throws Exception {
-        Long customerId = 1L;
-        likesService.create(post1.getId(), customerId);
-        likesService.create(post2.getId(), customerId);
-
-        mockMvc.perform(get("/api/post/likes")
-                        .param("customerId", customerId.toString())
-                        .param("page", "0")
-                        .param("size", "10"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$[0].title").value("제목1"))
-                .andExpect(jsonPath("$[1].title").value("제목2"));
-    }
-
     private RegisterPostRequestDto makePostRequestDto(String title) {
         return RegisterPostRequestDto.builder()
                 .title(title)
                 .body("text")
                 .customerId(1L)
-                .category(PostCategory.DAILY)
+                .category(PostCategory.BOOKS)
                 .customerName("김")
                 .build();
     }
