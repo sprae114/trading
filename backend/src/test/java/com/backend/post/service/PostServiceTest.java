@@ -1,369 +1,356 @@
 package com.backend.post.service;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
 import com.backend.common.exception.CustomException;
 import com.backend.common.exception.ErrorCode;
+import com.backend.common.model.RedisRequest;
+import com.backend.common.service.RedisService;
+import com.backend.common.service.S3Service;
 import com.backend.post.dto.request.RegisterPostRequestDto;
 import com.backend.post.dto.request.UpdateRequestDto;
+import com.backend.post.dto.response.PostListResponseDto;
+import com.backend.post.dto.response.PostResponseDto;
 import com.backend.post.model.PostCategory;
 import com.backend.post.model.TradeStatus;
 import com.backend.post.model.entity.Post;
 import com.backend.post.repository.PostRepository;
-import com.backend.user.model.Role;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
-
-@SpringBootTest
-@Transactional
+@ExtendWith(MockitoExtension.class)
 class PostServiceTest {
 
-    @Autowired
+    @Mock
     private PostRepository postRepository;
 
-    @Autowired
-    private PostService postService;
+    @Mock
+    private RedisService redisService;
 
-    @Autowired
-    private RedisTemplate<String, Object> redisTemplate; // RedisTemplate 주입
+    @Mock
+    private S3Service s3Service;
 
-    @Autowired
-    private ObjectMapper objectMapper; // ObjectMapper 주입
+    @Mock
+    private LikesService likesService;
 
-    private Post post;
+    @Mock
+    private ObjectMapper objectMapper;
 
     @Mock
     private Authentication authentication;
 
-    private RegisterPostRequestDto request;
+    @InjectMocks
+    private PostService postService;
 
+    private Post defaultPost;
+    private RegisterPostRequestDto registerRequest;
+    private UpdateRequestDto updateRequest;
+    private Pageable defaultPageable;
 
     @BeforeEach
     void setUp() {
-        redisTemplate.getConnectionFactory().getConnection().flushAll(); // 캐시 초기화
-        postRepository.deleteAll();
-        request = new RegisterPostRequestDto(
-                "Title1",
-                "Test Body",
+        defaultPost = Post.builder()
+                .id(1L)
+                .title("Test Post")
+                .body("Test Body")
+                .customerId(1L)
+                .customerName("Test User")
+                .category(PostCategory.ELECTRONICS)
+                .tradeStatus(TradeStatus.SALE)
+                .views(0L)
+                .imageUrls(List.of("image1.jpg"))
+                .build();
+
+        registerRequest = new RegisterPostRequestDto(
+                "New Post",
+                "New Body",
                 1L,
                 "Test User",
-                PostCategory.DAILY,
-                List.of("url1", "url2")
+                PostCategory.ELECTRONICS,
+                new MockMultipartFile[]{new MockMultipartFile("file", new byte[0])}
         );
 
+        updateRequest = new UpdateRequestDto(
+                1L,
+                "Updated Title",
+                "Updated Body",
+                PostCategory.ELECTRONICS,
+                new MockMultipartFile[]{new MockMultipartFile("file", new byte[0])}
+        );
+
+        defaultPageable = Pageable.unpaged();
     }
 
-
+    // create 메서드 테스트
     @Test
-    @DisplayName("게시글 생성 : 성공")
-    void createPostTest() {
-        // When
-        Post createdPost = postService.create(request);
-
-        // Then
-        assertNotNull(createdPost.getId());
-        assertEquals(request.title(), createdPost.getTitle());
-        assertEquals(TradeStatus.SALE, createdPost.getTradeStatus());
-        assertTrue(postRepository.findById(createdPost.getId()).isPresent()); // DB에 저장되었는지 확인
-    }
-
-
-    @Test
-    @DisplayName("상세 게시글 조회 : 성공")
-    void getOnePostTest() {
+    @DisplayName("게시글 생성 성공")
+    void create_success() throws IOException {
         // Given
-        Post savedPost = postRepository.save(RegisterPostRequestDto.toEntity(request));
+        when(s3Service.uploadFiles(any())).thenReturn(List.of("uploaded_image.jpg"));
+        when(postRepository.save(any(Post.class))).thenReturn(defaultPost);
 
         // When
-        Post foundPost = postService.getOne(savedPost.getId());
+        Post createdPost = postService.create(registerRequest);
 
         // Then
-        assertNotNull(foundPost);
-        assertEquals(savedPost.getId(), foundPost.getId());
-        assertEquals(savedPost.getTitle(), foundPost.getTitle());
+        assertNotNull(createdPost);
+        assertEquals(defaultPost.getId(), createdPost.getId());
+        verify(s3Service).uploadFiles(any());
+        verify(postRepository).save(any(Post.class));
     }
 
+    // getOne 메서드 테스트
+    @Test
+    @DisplayName("게시글 조회 성공")
+    void getOne_success() throws JsonProcessingException {
+        // Given
+        when(postRepository.findById(1L)).thenReturn(Optional.of(defaultPost));
+        when(s3Service.downloadFiles(anyList())).thenReturn(List.of(new byte[0]));
+        when(redisService.get("post:1")).thenReturn(null);
+        when(likesService.countLikes(1L)).thenReturn(5L);
+        when(objectMapper.writeValueAsString(any(RedisRequest.class))).thenReturn("mockedJson");
+        when(likesService.countLikesWithRedis(1L)).thenReturn(5L);
+
+        // When
+        PostResponseDto response = postService.getOne(1L);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(1L, response.views()); // 조회수 1 증가
+        assertEquals(5L, response.likeCount());
+        verify(redisService).setKeyWithExpiration(eq("post:1"), anyString(), eq(6000L));
+    }
 
     @Test
-    @DisplayName("상세 게시글 조회 : 실패(존재하지 않는 ID)")
-    void getOnePostNotFoundTest() {
+    @DisplayName("게시글을 찾을 수 없는 경우 예외 발생")
+    void getOne_postNotFound() {
         // Given
-        Long nonExistingPostId = 999L;
+        when(postRepository.findById(1L)).thenReturn(Optional.empty());
 
         // When & Then
-        CustomException exception = assertThrows(CustomException.class, () -> postService.getOne(nonExistingPostId));
+        CustomException exception = assertThrows(CustomException.class, () -> postService.getOne(1L));
         assertEquals(ErrorCode.POST_NOT_FOUND, exception.getErrorCode());
     }
 
-
+    // getList 메서드 테스트
     @Test
-    @DisplayName("게시글 리스트 조회 : 성공")
-    void getListTest() {
+    @DisplayName("게시글 목록 조회 성공")
+    void getList_success() throws JsonProcessingException {
         // Given
-        postService.create(request);
-        RegisterPostRequestDto request2 = new RegisterPostRequestDto("Title2", "Body2", 2L, "User2", PostCategory.FOOD, List.of());
-        postRepository.save(RegisterPostRequestDto.toEntity(request2));
-
-        Pageable pageable = PageRequest.of(0, 10);
+        Page<Post> postPage = new PageImpl<>(List.of(defaultPost));
+        when(postRepository.findAll(defaultPageable)).thenReturn(postPage);
+        when(s3Service.downloadFiles(anyList())).thenReturn(List.of(new byte[0]));
+        when(redisService.get("post:1")).thenReturn(null);
+        when(likesService.countLikesWithRedis(1L)).thenReturn(5L);
+        when(objectMapper.writeValueAsString(any(RedisRequest.class))).thenReturn("mockedJson");
 
         // When
-        Page<Post> postPage = postService.getList(pageable);
+        Page<PostListResponseDto> result = postService.getList(defaultPageable);
 
         // Then
-        assertEquals(2, postPage.getTotalElements());
-        assertEquals(1, postPage.getTotalPages());
-        assertEquals("Title1", postPage.getContent().get(0).getTitle());
-        assertEquals("Title2", postPage.getContent().get(1).getTitle());
+        assertEquals(1, result.getTotalElements());
+        assertEquals(1L, result.getContent().get(0).views()); // 조회수 1 증가
+        assertEquals(5L, result.getContent().get(0).likesCount());
+        verify(redisService).setKeyWithExpiration(eq("post:1"), anyString(), eq(6000L));
     }
 
-
+    // update 메서드 테스트
     @Test
-    @DisplayName("게시글 수정 : 성공")
-    void updatePostTest() throws Exception{
+    @DisplayName("게시글 수정 성공 - 관리자")
+    void update_success_admin() throws IOException {
         // Given
-        Post savedPost = postService.create(request);
-
-        String expectedUsername = "Test User";
-        when(authentication.getName()).thenReturn(expectedUsername);
-        when(authentication.getAuthorities())
-                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
-
-        UpdateRequestDto updateRequest = new UpdateRequestDto(
-                savedPost.getId(),
-                "Updated Title",
-                "Updated Body",
-                PostCategory.FOOD,
-                List.of("newUrl1", "newUrl2")
-        );
-
-        // When
-        Post updatedPost = postService.update(updateRequest, authentication);
-
-        // Then
-        assertEquals(updateRequest.id(), updatedPost.getId());
-        assertEquals(updateRequest.title(), updatedPost.getTitle());
-        assertEquals(updateRequest.body(), updatedPost.getBody());
-        assertEquals(updateRequest.category(), updatedPost.getCategory());
-        assertEquals(updateRequest.imageUrls(), updatedPost.getImageUrls());
-    }
-
-    @Test
-    @DisplayName("게시글 수정 : 성공")
-    void updatePostAdminTest() throws Exception{
-        // Given
-        Post savedPost = postService.create(request);
-
-        String expectedUsername = "Admin User";
-        when(authentication.getName()).thenReturn(expectedUsername);
-        when(authentication.getAuthorities())
+        when(postRepository.findById(1L)).thenReturn(Optional.of(defaultPost));
+         when(authentication.getAuthorities())
                 .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN")));
-
-        UpdateRequestDto updateRequest = new UpdateRequestDto(
-                savedPost.getId(),
-                "Updated Title",
-                "Updated Body",
-                PostCategory.FOOD,
-                List.of("newUrl1", "newUrl2")
-        );
+        when(s3Service.uploadFiles(any())).thenReturn(List.of("new_image.jpg"));
+        when(postRepository.save(any(Post.class))).thenReturn(defaultPost);
 
         // When
-        Post updatedPost = postService.update(updateRequest, authentication);
+        postService.update(updateRequest, authentication);
 
         // Then
-        assertEquals(updateRequest.id(), updatedPost.getId());
-        assertEquals(updateRequest.title(), updatedPost.getTitle());
-        assertEquals(updateRequest.body(), updatedPost.getBody());
-        assertEquals(updateRequest.category(), updatedPost.getCategory());
-        assertEquals(updateRequest.imageUrls(), updatedPost.getImageUrls());
+        verify(s3Service).deleteFiles(anyList());
+        verify(s3Service).uploadFiles(any());
+        verify(postRepository).save(any(Post.class));
     }
 
     @Test
-    @DisplayName("게시글 수정 : 실패(다른 아이디)")
-    void updatePostNotMatchCustomer() throws Exception {
+    @DisplayName("게시글 수정 성공 - 소유자")
+    void update_success_owner() throws IOException {
         // Given
-        Post savedPost = postService.create(request);
-
-        String expectedUsername = "Test!!!";
-        when(authentication.getName()).thenReturn(expectedUsername);
-        when(authentication.getAuthorities())
+        when(postRepository.findById(1L)).thenReturn(Optional.of(defaultPost));
+         when(authentication.getAuthorities())
                 .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
-
-        UpdateRequestDto updateRequest = new UpdateRequestDto(
-                savedPost.getId(),
-                "Updated Title",
-                "Updated Body",
-                PostCategory.FOOD,
-                List.of("newUrl1", "newUrl2")
-        );
+        when(authentication.getName()).thenReturn("Test User");
+        when(s3Service.uploadFiles(any())).thenReturn(List.of("new_image.jpg"));
+        when(postRepository.save(any(Post.class))).thenReturn(defaultPost);
 
         // When
+        postService.update(updateRequest, authentication);
+
+        // Then
+        verify(s3Service).deleteFiles(anyList());
+        verify(s3Service).uploadFiles(any());
+        verify(postRepository).save(any(Post.class));
+    }
+
+    @Test
+    @DisplayName("게시글 수정 실패 - 권한 없음")
+    void update_unauthorized() {
+        // Given
+        when(postRepository.findById(1L)).thenReturn(Optional.of(defaultPost));
+         when(authentication.getAuthorities())
+                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
+        when(authentication.getName()).thenReturn("Another User");
+
+        // When & Then
         CustomException exception = assertThrows(CustomException.class, () -> postService.update(updateRequest, authentication));
         assertEquals(ErrorCode.USER_NOT_AUTHORIZED, exception.getErrorCode());
     }
 
-
+    // delete 메서드 테스트
     @Test
-    @DisplayName("게시글 수정 : 실패(존재하지 않는 게시물)")
-    void updatePostNotFoundTest() {
+    @DisplayName("게시글 삭제 성공 - 관리자")
+    void delete_success_admin() {
         // Given
-        UpdateRequestDto updateRequestDto = new UpdateRequestDto(
-                999L, // Non-existing ID
-                "Updated Title",
-                "Updated Body",
-                PostCategory.DAILY,
-                List.of("url2", "url3")
-        );
-
-        // When & Then
-        CustomException exception = assertThrows(CustomException.class, ()-> postService.update(updateRequestDto, authentication));
-        assertEquals(ErrorCode.POST_NOT_FOUND, exception.getErrorCode());
-    }
-
-
-    @Test
-    @DisplayName("게시글 삭제 : 성공")
-    void deletePostTest() {
-        // Given
-        Post savedPost = postService.create(request);
-        String expectedUsername = "Test User";
-        when(authentication.getName()).thenReturn(expectedUsername);
-        when(authentication.getAuthorities())
-                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
-
-        // When
-        postService.delete(savedPost.getId(), authentication);
-
-        // Then
-        assertFalse(postRepository.findById(savedPost.getId()).isPresent());
-    }
-
-    @Test
-    @DisplayName("게시글 삭제 : 성공(관리자)")
-    void deletePostAdminTest() {
-        // Given
-        Post savedPost = postService.create(request);
-        String expectedUsername = "Admin";
-        when(authentication.getName()).thenReturn(expectedUsername);
-        when(authentication.getAuthorities())
+        when(postRepository.findById(1L)).thenReturn(Optional.of(defaultPost));
+         when(authentication.getAuthorities())
                 .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN")));
 
         // When
-        postService.delete(savedPost.getId(), authentication);
+        postService.delete(1L, authentication);
 
         // Then
-        assertFalse(postRepository.findById(savedPost.getId()).isPresent());
+        verify(redisService).delete("post:1");
+        verify(postRepository).deleteById(1L);
+        verify(likesService).deleteAllByPostId(1L);
     }
 
     @Test
-    @DisplayName("게시글 삭제 : 실패(다른 아이디)")
-    void deleteNotMatchCustomer(){
+    @DisplayName("게시글 삭제 성공 - 소유자")
+    void delete_success_owner() {
         // Given
-        Post savedPost = postService.create(request);
-        String expectedUsername = "Test!!";
-        when(authentication.getName()).thenReturn(expectedUsername);
-        when(authentication.getAuthorities())
+        when(postRepository.findById(1L)).thenReturn(Optional.of(defaultPost));
+         when(authentication.getAuthorities())
                 .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
+        when(authentication.getName()).thenReturn("Test User");
 
         // When
-        CustomException exception = assertThrows(CustomException.class, () -> postService.delete(savedPost.getId(), authentication));
+        postService.delete(1L, authentication);
+
+        // Then
+        verify(redisService).delete("post:1");
+        verify(postRepository).deleteById(1L);
+        verify(likesService).deleteAllByPostId(1L);
+    }
+
+    @Test
+    @DisplayName("게시글 삭제 실패 - 권한 없음")
+    void delete_unauthorized() {
+        // Given
+        when(postRepository.findById(1L)).thenReturn(Optional.of(defaultPost));
+         when(authentication.getAuthorities())
+                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
+        when(authentication.getName()).thenReturn("Another User");
+
+        // When & Then
+        CustomException exception = assertThrows(CustomException.class, () -> postService.delete(1L, authentication));
         assertEquals(ErrorCode.USER_NOT_AUTHORIZED, exception.getErrorCode());
     }
 
+    // deleteList 메서드 테스트
     @Test
-    @DisplayName("likes 이용한 게시글 조회 : 성공")
-    void getListByLikes(){
-        //given
-        Post post1 = postService.create(request);
-        RegisterPostRequestDto request2 = new RegisterPostRequestDto("Title2", "Body2", 1L, "User2", PostCategory.FOOD, List.of());
-        Post post2 = postRepository.save(RegisterPostRequestDto.toEntity(request2));
-
-        //when
-        List<Post> result = postService.getPostsByIds(List.of(post1.getId(), post2.getId()));
-
-        //then
-        assertEquals(result.size(), 2);
-    }
-
-    @Test
-    @DisplayName("게시글 조회 with Redis 캐시 : 성공 - 캐시 없음")
-    void getOneWithViewNoCacheTest() throws JsonProcessingException {
+    @DisplayName("여러 게시글 삭제 성공 - 관리자")
+    void deleteList_success_admin() {
         // Given
-        Post savedPost = postRepository.save(RegisterPostRequestDto.toEntity(request));
-        String cacheKey = "post:" + savedPost.getId();
+        List<Long> postIds = List.of(1L, 2L);
+        Post post2 = Post.builder().id(2L).customerName("Another User").imageUrls(List.of("image2.jpg")).build();
+        when(postRepository.findAllById(postIds)).thenReturn(List.of(defaultPost, post2));
+         when(authentication.getAuthorities())
+                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN")));
 
         // When
-        Post foundPost = postService.getOneWithView(savedPost.getId());
+        postService.deleteList(postIds, authentication);
 
         // Then
-        assertNotNull(foundPost);
-        assertEquals(savedPost.getId(), foundPost.getId());
-        assertEquals(savedPost.getTitle(), foundPost.getTitle());
-
-        // Redis에 캐싱되었는지 확인
-        // 캐시에서 가져왔는지 확인 (DB 조회 없이 캐시에서 바로 반환)
-        String s = objectMapper.writeValueAsString(redisTemplate.opsForValue().get(cacheKey));
-        Post cachedPost = objectMapper.readValue(s, Post.class);
-        assertNotNull(cachedPost);
-        assertEquals(savedPost.getId(), cachedPost.getId());
+        verify(redisService, times(2)).delete(anyString());
+        verify(s3Service).deleteFiles(anyList());
+        verify(postRepository).deleteAllByIdIn(postIds);
+        verify(likesService, times(2)).deleteAllByPostId(anyLong());
     }
 
     @Test
-    @DisplayName("게시글 조회 with Redis 캐시 : 성공 - 캐시 있음")
-    void getOneWithViewWithCacheTest() throws JsonProcessingException {
+    @DisplayName("여러 게시글 삭제 성공 - 소유자")
+    void deleteList_success_owner() {
         // Given
-        Post savedPost = postRepository.save(RegisterPostRequestDto.toEntity(request));
-        String cacheKey = "post:" + savedPost.getId();
-        redisTemplate.opsForValue().set(cacheKey, savedPost, 30, TimeUnit.MINUTES);
+        List<Long> postIds = List.of(1L);
+        when(postRepository.findAllById(postIds)).thenReturn(List.of(defaultPost));
+         when(authentication.getAuthorities())
+                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
+        when(authentication.getName()).thenReturn("Test User");
 
         // When
-        Post foundPost = postService.getOneWithView(savedPost.getId());
+        postService.deleteList(postIds, authentication);
 
         // Then
-        assertNotNull(foundPost);
-        assertEquals(savedPost.getId(), foundPost.getId());
-        assertEquals(savedPost.getTitle(), foundPost.getTitle());
-
-        // 캐시에서 가져왔는지 확인 (DB 조회 없이 캐시에서 바로 반환)
-        String s = objectMapper.writeValueAsString(redisTemplate.opsForValue().get(cacheKey));
-        Post cachedPost = objectMapper.readValue(s, Post.class);
-
-        assertNotNull(cachedPost);
-        assertEquals(savedPost.getId(), cachedPost.getId());
+        verify(redisService).delete("post:1");
+        verify(s3Service).deleteFiles(anyList());
+        verify(postRepository).deleteAllByIdIn(List.of(1L));
+        verify(likesService).deleteAllByPostId(1L);
     }
 
     @Test
-    @DisplayName("게시글 조회 with Redis 캐시 : 실패 - 존재하지 않는 ID")
-    void getOneWithViewNotFoundTest() {
+    @DisplayName("여러 게시글 삭제 - 권한 없는 게시글 제외")
+    void deleteList_unauthorized() {
         // Given
-        Long nonExistingPostId = 999L;
-        String cacheKey = "post:" + nonExistingPostId;
+        List<Long> postIds = List.of(1L);
+        when(postRepository.findAllById(postIds)).thenReturn(List.of(defaultPost));
+         when(authentication.getAuthorities())
+                .thenReturn((Collection) Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
+        when(authentication.getName()).thenReturn("Another User");
 
-        // When & Then
-        CustomException exception = assertThrows(CustomException.class, () ->
-                postService.getOneWithView(nonExistingPostId));
-        assertEquals(ErrorCode.POST_NOT_FOUND, exception.getErrorCode());
+        // When
+        postService.deleteList(postIds, authentication);
 
-        // Redis에 캐시가 생성되지 않았는지 확인
-        assertNull(redisTemplate.opsForValue().get(cacheKey));
+        // Then
+        verify(redisService, never()).delete(anyString());
+        verify(s3Service, never()).deleteFiles(anyList());
+        verify(postRepository, never()).deleteAllByIdIn(anyList());
+        verify(likesService, never()).deleteAllByPostId(anyLong());
+    }
+
+    @Test
+    @DisplayName("빈 게시글 목록 삭제 시 아무 작업 안 함")
+    void deleteList_emptyList() {
+        // Given
+        List<Long> postIds = List.of();
+
+        // When
+        postService.deleteList(postIds, authentication);
+
+        // Then
+        verify(postRepository, never()).findAllById(anyList());
+        verify(redisService, never()).delete(anyString());
     }
 }
