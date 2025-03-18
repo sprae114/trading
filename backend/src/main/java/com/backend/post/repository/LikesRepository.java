@@ -14,7 +14,7 @@ public interface LikesRepository extends JpaRepository<Likes, Long> {
 
     Optional<Likes> findByPostIdAndCustomerId(Long postId, Long customerId);
 
-    long countByPostId(Long postId);
+    Long countByPostId(Long postId);
 
     Page<Likes> findAllByCustomerId(Long customerId, Pageable pageable);
 
