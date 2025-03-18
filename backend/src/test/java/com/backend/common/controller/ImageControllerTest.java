@@ -3,7 +3,7 @@ package com.backend.common.controller;
 import com.backend.common.exception.CustomException;
 import com.backend.common.exception.ErrorCode;
 import com.backend.common.service.S3Service;
-import com.backend.post.model.entity.Post;
+import com.backend.post.dto.response.PostResponseDto;
 import com.backend.post.service.PostService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -58,7 +58,10 @@ class ImageControllerTest {
         List<String> mockUrls = Arrays.asList("https://s3.amazonaws.com/test1.jpg", "https://s3.amazonaws.com/test2.png");
         when(s3Service.uploadFiles(files)).thenReturn(mockUrls);
 
-        Post mockPost = Post.builder().imageUrls(Arrays.asList("test1.jpg", "test2.png")).build();
+        PostResponseDto mockPost = PostResponseDto
+                .builder()
+                .images(Arrays.asList("test image content".getBytes(), "test image content 2".getBytes()))
+                .build();
         when(postService.getOne(1L)).thenReturn(mockPost);
 
         List<byte[]> mockContents = Arrays.asList("image content 1".getBytes(), "image content 2".getBytes());
@@ -110,7 +113,6 @@ class ImageControllerTest {
         result.andExpect(status().isOk());
 
         verify(postService, times(1)).getOne(1L);
-        verify(s3Service, times(1)).downloadFiles(anyList());
     }
 
     @DisplayName("이미지 다운로드(게시글) : 실패(존재하지 않는 게시글)")

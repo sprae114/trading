@@ -15,19 +15,18 @@ public record PostResponseDto(
         String customerName,
         PostCategory category,
         Long views,
-        List<String> imageUrls
+        List<byte[]> images
 ) {
-    public static PostResponseDto from(Post post){
-        return PostResponseDto
-                .builder()
+    public static PostResponseDto from(Post post, Long RedisPostViews, List<byte[]> downImages) {
+        return PostResponseDto.builder()
                 .id(post.getId())
                 .title(post.getTitle())
                 .body(post.getBody())
                 .customerId(post.getCustomerId())
                 .customerName(post.getCustomerName())
                 .category(post.getCategory())
-                .views(post.getViews())
-                .imageUrls(post.getImageUrls())
+                .views(RedisPostViews)
+                .images(downImages)
                 .build();
     }
 }

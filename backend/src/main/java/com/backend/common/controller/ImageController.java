@@ -1,8 +1,10 @@
 package com.backend.common.controller;
 
 import com.backend.common.service.S3Service;
+import com.backend.post.dto.response.PostResponseDto;
 import com.backend.post.model.entity.Post;
 import com.backend.post.service.PostService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,11 +34,11 @@ public class ImageController {
      * postId 에 대한 모든 파일 다운로드
      */
     @PostMapping("/download/post")
-    public ResponseEntity<List<byte[]>> downloadImage(@RequestBody String postId) {
-        Post findPost = postService.getOne(Long.valueOf(postId));
-        List<byte[]> fileContents = s3Service.downloadFiles(findPost.getImageUrls());
+    public ResponseEntity<PostResponseDto> downloadImage(@RequestBody String postId) throws JsonProcessingException {
 
-        return ResponseEntity.ok(fileContents);
+        return ResponseEntity
+                .ok()
+                .body(postService.getOne(Long.valueOf(postId)));
     }
 
     /**
