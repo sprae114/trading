@@ -21,7 +21,7 @@ import java.util.Set;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ViewCountSyncSchedulerTest {
+class CountSyncSchedulerTest {
 
     @Mock
     private PostRepository postRepository;
@@ -36,7 +36,7 @@ class ViewCountSyncSchedulerTest {
     private ObjectMapper objectMapper;
 
     @InjectMocks
-    private ViewCountSyncScheduler viewCountSyncScheduler;
+    private CountSyncScheduler countSyncScheduler;
 
     @BeforeEach
     void setUp() {
@@ -50,8 +50,8 @@ class ViewCountSyncSchedulerTest {
         Set<String> redisKeys = Set.of("post:1", "post:2");
         when(redisTemplate.keys("post:*")).thenReturn(redisKeys);
 
-        RedisRequest redisRequest1 = new RedisRequest(1L, 50L);
-        RedisRequest redisRequest2 = new RedisRequest(2L, 75L);
+        RedisRequest redisRequest1 = new RedisRequest(1L, 50L, 10L);
+        RedisRequest redisRequest2 = new RedisRequest(2L, 75L, 10L);
         when(valueOperations.get("post:1")).thenReturn("{\"id\":1,\"views\":50}");
         when(valueOperations.get("post:2")).thenReturn("{\"id\":2,\"views\":75}");
         when(objectMapper.readValue("{\"id\":1,\"views\":50}", RedisRequest.class)).thenReturn(redisRequest1);
@@ -67,7 +67,7 @@ class ViewCountSyncSchedulerTest {
                 .thenReturn(List.of(updatedPost1, updatedPost2));
 
         // When
-        viewCountSyncScheduler.syncViewCounts();
+        countSyncScheduler.syncViewCounts();
 
         // Then
         verify(postRepository, times(1)).saveAll(anyList());
@@ -87,7 +87,7 @@ class ViewCountSyncSchedulerTest {
                 .thenThrow(new JsonProcessingException("Parsing error") {});
 
         // When
-        viewCountSyncScheduler.syncViewCounts();
+        countSyncScheduler.syncViewCounts();
 
         // Then
         verify(redisTemplate, times(1)).keys("post:*");
@@ -102,7 +102,7 @@ class ViewCountSyncSchedulerTest {
         Set<String> redisKeys = Set.of("post:1");
         when(redisTemplate.keys("post:*")).thenReturn(redisKeys);
 
-        RedisRequest redisRequest = new RedisRequest(1L, 50L);
+        RedisRequest redisRequest = new RedisRequest(1L, 50L, 10L);
         when(valueOperations.get("post:1")).thenReturn("{\"id\":1,\"views\":50}");
         when(objectMapper.readValue("{\"id\":1,\"views\":50}", RedisRequest.class)).thenReturn(redisRequest);
 
@@ -110,7 +110,7 @@ class ViewCountSyncSchedulerTest {
         when(postRepository.findAllById(List.of(1L))).thenReturn(List.of(dbPost));
 
         // When
-        viewCountSyncScheduler.syncViewCounts();
+        countSyncScheduler.syncViewCounts();
 
         // Then
         verify(postRepository, times(1)).saveAll(anyList());

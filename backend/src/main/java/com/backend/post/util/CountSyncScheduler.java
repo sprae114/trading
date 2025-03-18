@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ViewCountSyncScheduler {
+public class CountSyncScheduler {
 
     private final PostRepository postRepository;
     private final RedisTemplate<String, Object> redisTemplate;
