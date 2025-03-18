@@ -3,6 +3,7 @@ package com.backend.post.util;
 import com.backend.common.model.RedisRequest;
 import com.backend.post.model.entity.Post;
 import com.backend.post.repository.PostRepository;
+import com.backend.post.service.LikesService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -17,11 +18,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
  * 스케쥴링을 통해
- * redis -> DB로 조호수 반영
+ * redis -> DB로 조회수 반영
  */
 @Slf4j
 @Component
@@ -29,6 +31,7 @@ import java.util.stream.Collectors;
 public class CountSyncScheduler {
 
     private final PostRepository postRepository;
+    private final LikesService likesService;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -43,7 +46,7 @@ public class CountSyncScheduler {
         Set<String> keys = redisTemplate.keys(CACHE_KEY_PREFIX + "*");
 
         if (keys == null || keys.isEmpty()) {
-            log.info("Redis에 post 데이터가 없습니다.");
+            log.info("No post data found in Redis.");
             return;
         }
 
@@ -54,7 +57,7 @@ public class CountSyncScheduler {
                     try {
                         return objectMapper.readValue(value.toString(), RedisRequest.class);
                     } catch (JsonProcessingException e) {
-                        log.error("레디스 파싱 에러, key: {}", key, e);
+                        log.error("Redis parsing error, key: {}", key, e);
                         return null;
                     }
                 })
@@ -80,12 +83,66 @@ public class CountSyncScheduler {
         // 5. 변경된 내용 DB에 반영
         if (!postsToUpdate.isEmpty()) {
             postRepository.saveAll(postsToUpdate);
-            log.info("{}개의 게시물 조회수를 성공적으로 동기화했습니다.", postsToUpdate.size());
+            log.info("Successfully synchronized view counts for {} posts.", postsToUpdate.size());
         } else {
-            log.info("조회수 업데이트가 필요 없습니다.");
+            log.info("No view count updates needed.");
         }
 
         // 6. 스케줄링 완료 로그
-        log.info("조회수 동기화 스케줄링이 {}에 완료되었습니다.", LocalDateTime.now());
+        log.info("View count synchronization completed at {}.", LocalDateTime.now());
+    }
+
+    @Scheduled(cron = "0 */5 * * * *")
+    public void syncLikeCount() throws JsonProcessingException {
+        // 1. redisTemplate에서 "post:"로 시작하는 모든 키 가져오기
+        Set<String> keys = redisTemplate.keys(CACHE_KEY_PREFIX + "*");
+
+        if (keys == null || keys.isEmpty()) {
+            log.info("No like data found in Redis.");
+            return;
+        }
+
+        // 2. Redis에서 가져온 데이터 처리
+        int updatedCount = 0;
+        for (String key : keys) {
+            Object value = redisTemplate.opsForValue().get(key);
+            if (value == null) {
+                continue;
+            }
+
+            try {
+                RedisRequest redisRequest = objectMapper.readValue(value.toString(), RedisRequest.class);
+                Long postId = redisRequest.id();
+                Long redisLikeCount = redisRequest.likeCount();
+
+                // 3. DB에서 실제 좋아요 수 조회
+                Long dbLikeCount = likesService.countLikes(postId);
+
+                // 4. Redis와 DB 값이 다르면 Redis를 DB 값으로 갱신
+                if (!redisLikeCount.equals(dbLikeCount)) {
+                    log.warn("Like count mismatch - postId: {}, DB: {}, Redis: {}", postId, dbLikeCount, redisLikeCount);
+                    redisRequest = RedisRequest.builder()
+                            .id(postId)
+                            .views(redisRequest.views()) // 기존 조회수 유지
+                            .likeCount(dbLikeCount)// DB 값으로 갱신
+                            .build();
+
+                    String updatedRedisValue = objectMapper.writeValueAsString(redisRequest);
+                    redisTemplate.opsForValue().set(key, updatedRedisValue, 6000, TimeUnit.SECONDS);
+                    updatedCount++;
+                }
+            } catch (JsonProcessingException e) {
+                log.error("Redis parsing error, key: {}", key, e);
+            }
+        }
+
+        // 5. 결과 로깅
+        if (updatedCount > 0) {
+            log.info("Successfully synchronized like counts for {} posts.", updatedCount);
+        } else {
+            log.info("No like count updates needed.");
+        }
+
+        log.info("Like count synchronization completed at {}.", LocalDateTime.now());
     }
 }
