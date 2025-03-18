@@ -5,5 +5,6 @@ import lombok.Builder;
 @Builder
 public record RedisRequest(
         Long id,
-        Long views
+        Long views,
+        Long likeCount
 ) {}
