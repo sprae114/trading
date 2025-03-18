@@ -15,6 +15,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
+@Table(
+        name = "post",
+        indexes = {
+                @Index(name = "idx_customer_id", columnList = "customerId")
+        }
+)
 @ToString(callSuper = true)
 public class Post extends BaseEntity {
 
