@@ -113,6 +113,25 @@ public class LikesService {
     }
 
     /**
+     * 해당 게시물의 좋아요 전체 삭제
+     */
+    @Transactional
+    public void deleteAllByPostId(Long postId) {
+        log.info("Deleting like for postId: {}", postId);
+
+        // 1. 해당 게시글 좋아요 전체 찾기
+        List<Likes> findLikes = likesRepository.findAllByPostId(postId);
+
+        if (!findLikes.isEmpty()) {
+            log.debug("Deleting like for postId: {}", postId);
+            return;
+        }
+
+        // 2. 한번에 삭제
+        likesRepository.deleteAllByPostId(postId);
+    }
+
+    /**
      * 고객의 모든 좋아요 삭제 (관리자용)
      */
     @Transactional
