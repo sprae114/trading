@@ -1,6 +1,7 @@
 package com.backend.post.dto.response;
 
 import com.backend.post.model.PostCategory;
+import com.backend.post.model.TradeStatus;
 import com.backend.post.model.entity.Post;
 import lombok.Builder;
 
@@ -14,6 +15,7 @@ public record PostListResponseDto(
         String body,
         Long customerId,
         String customerName,
+        TradeStatus tradeStatus,
         PostCategory category,
         Long views,
         Long likesCount,
@@ -27,6 +29,7 @@ public record PostListResponseDto(
                 .body(post.getBody())
                 .customerId(post.getCustomerId())
                 .customerName(post.getCustomerName())
+                .tradeStatus(post.getTradeStatus())
                 .category(post.getCategory())
                 .views(RedisPostViews)
                 .likesCount(RedisLikeCount)
