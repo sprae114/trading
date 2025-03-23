@@ -1,6 +1,7 @@
 package com.backend.post.model;
 
 public enum PostCategory {
+    ALL,              // 전체
     ELECTRONICS,       // 전자제품
     FASHION,          // 패션
     HOME_APPLIANCES,  // 가전/가구
