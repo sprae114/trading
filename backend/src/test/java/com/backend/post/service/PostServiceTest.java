@@ -6,6 +6,7 @@ import com.backend.common.model.RedisRequest;
 import com.backend.common.service.RedisService;
 import com.backend.common.service.S3Service;
 import com.backend.post.dto.request.RegisterPostRequestDto;
+import com.backend.post.dto.request.SearchPostRequestDto;
 import com.backend.post.dto.request.UpdateRequestDto;
 import com.backend.post.dto.response.PostListResponseDto;
 import com.backend.post.dto.response.PostResponseDto;
@@ -28,6 +29,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -66,10 +68,14 @@ class PostServiceTest {
     private Post defaultPost;
     private RegisterPostRequestDto registerRequest;
     private UpdateRequestDto updateRequest;
-    private Pageable defaultPageable;
+    private Pageable pageable;
 
     @BeforeEach
     void setUp() {
+        MockMultipartFile file1 = new MockMultipartFile("file1", "test1.jpg", "image/jpeg", "test image".getBytes());
+        MockMultipartFile file2 = new MockMultipartFile("file2", "test2.jpg", "image/jpeg", "another test image".getBytes());
+        MockMultipartFile file3 = new MockMultipartFile("file3", "test3.jpg", "image/jpeg", "another test image3".getBytes());
+
         defaultPost = Post.builder()
                 .id(1L)
                 .title("Test Post")
@@ -82,29 +88,39 @@ class PostServiceTest {
                 .imageUrls(List.of("image1.jpg"))
                 .build();
 
-        registerRequest = new RegisterPostRequestDto(
-                "New Post",
-                "New Body",
-                1L,
-                "Test User",
-                PostCategory.ELECTRONICS,
-                new MockMultipartFile[]{new MockMultipartFile("file", new byte[0])}
-        );
+        // 등록 Dto
+        RegisterPostRequestDto registerDto = RegisterPostRequestDto.builder()
+                .title("New Post")
+                .body("New Body")
+                .customerId(1L)
+                .customerName("New User")
+                .category(PostCategory.ELECTRONICS)
+                .build();
 
-        updateRequest = new UpdateRequestDto(
-                1L,
-                "Updated Title",
-                "Updated Body",
-                PostCategory.ELECTRONICS,
-                new MockMultipartFile[]{new MockMultipartFile("file", new byte[0])}
-        );
+        MultipartFile[] registerFiles = new MultipartFile[]{file1, file2};
 
-        defaultPageable = Pageable.unpaged();
+        registerRequest = RegisterPostRequestDto.from(registerDto, registerFiles);
+
+
+        // 수정 Dto
+        UpdateRequestDto updateDto = UpdateRequestDto.builder()
+                .id(1L)
+                .title("Updated Title")
+                .body("Updated Body")
+                .tradeStatus(TradeStatus.HIDDEN)
+                .category(PostCategory.ELECTRONICS)
+                .build();
+
+        MultipartFile[] updateFiles = new MultipartFile[]{file1, file3};
+
+        updateRequest = UpdateRequestDto.from(updateDto, updateFiles);
+
+        pageable = Pageable.unpaged();
     }
 
     // create 메서드 테스트
     @Test
-    @DisplayName("게시글 생성 성공")
+    @DisplayName("게시글 생성 : 성공")
     void create_success() throws IOException {
         // Given
         when(s3Service.uploadFiles(any())).thenReturn(List.of("uploaded_image.jpg"));
@@ -159,14 +175,14 @@ class PostServiceTest {
     void getList_success() throws JsonProcessingException {
         // Given
         Page<Post> postPage = new PageImpl<>(List.of(defaultPost));
-        when(postRepository.findAll(defaultPageable)).thenReturn(postPage);
+        when(postRepository.findAll(pageable)).thenReturn(postPage);
         when(s3Service.downloadFiles(anyList())).thenReturn(List.of(new byte[0]));
         when(redisService.get("post:1")).thenReturn(null);
         when(likesService.countLikesWithRedis(1L)).thenReturn(5L);
         when(objectMapper.writeValueAsString(any(RedisRequest.class))).thenReturn("mockedJson");
 
         // When
-        Page<PostListResponseDto> result = postService.getList(defaultPageable);
+        Page<PostListResponseDto> result = postService.getList(pageable);
 
         // Then
         assertEquals(1, result.getTotalElements());
@@ -352,5 +368,121 @@ class PostServiceTest {
         // Then
         verify(postRepository, never()).findAllById(anyList());
         verify(redisService, never()).delete(anyString());
+    }
+
+    // 성공 케이스
+    @Test
+    @DisplayName("카테고리로만 검색 : 성공")
+    void searchByCategory_success() throws JsonProcessingException {
+        // Given
+        SearchPostRequestDto request = new SearchPostRequestDto("", PostCategory.ELECTRONICS);
+        Page<Post> postPage = new PageImpl<>(List.of(defaultPost), pageable, 1);
+        when(postRepository.searchByCategory(PostCategory.ELECTRONICS, pageable)).thenReturn(postPage);
+        when(s3Service.downloadFiles(anyList())).thenReturn(List.of(new byte[0]));
+        when(redisService.get("post:1")).thenReturn(null);
+        when(likesService.countLikes(1L)).thenReturn(5L);
+        when(objectMapper.writeValueAsString(any(RedisRequest.class))).thenReturn("mockedJson");
+        when(likesService.countLikesWithRedis(1L)).thenReturn(5L);
+
+        // When
+        Page<PostListResponseDto> result = postService.searchByTitleAndCategory(request, pageable);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(1L, result.getContent().get(0).views()); // 조회수 증가
+        assertEquals(5L, result.getContent().get(0).likesCount());
+        verify(postRepository).searchByCategory(PostCategory.ELECTRONICS, pageable);
+        verify(redisService).setKeyWithExpiration(eq("post:1"), anyString(), eq(6000L));
+    }
+
+
+    @Test
+    @DisplayName("제목만 검색 : 성공")
+    void searchByTitle_success() throws JsonProcessingException {
+        // Given
+        SearchPostRequestDto request = new SearchPostRequestDto("Test", PostCategory.ALL);
+        Page<Post> postPage = new PageImpl<>(List.of(defaultPost), pageable, 1);
+        when(postRepository.searchByTitle("Test", pageable)).thenReturn(postPage);
+        when(s3Service.downloadFiles(anyList())).thenReturn(List.of(new byte[0]));
+        when(redisService.get("post:1")).thenReturn(null);
+        when(likesService.countLikes(1L)).thenReturn(5L);
+        when(objectMapper.writeValueAsString(any(RedisRequest.class))).thenReturn("mockedJson");
+        when(likesService.countLikesWithRedis(1L)).thenReturn(5L);
+
+        // When
+        Page<PostListResponseDto> result = postService.searchByTitleAndCategory(request, pageable);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Test Post", result.getContent().get(0).title());
+        verify(postRepository).searchByTitle("Test", pageable);
+        verify(redisService).setKeyWithExpiration(eq("post:1"), anyString(), eq(6000L));
+    }
+
+
+    @Test
+    @DisplayName("제목과 카테고리로 검색 : 성공")
+    void searchByTitleAndCategory_success() throws JsonProcessingException {
+        // Given
+        SearchPostRequestDto request = new SearchPostRequestDto("Test", PostCategory.ELECTRONICS);
+        Page<Post> postPage = new PageImpl<>(List.of(defaultPost), pageable, 1);
+        when(postRepository.searchByTitleAndCategory("Test", PostCategory.ELECTRONICS, pageable)).thenReturn(postPage);
+        when(s3Service.downloadFiles(anyList())).thenReturn(List.of(new byte[0]));
+        when(redisService.get("post:1")).thenReturn(null);
+        when(likesService.countLikes(1L)).thenReturn(5L);
+        when(objectMapper.writeValueAsString(any(RedisRequest.class))).thenReturn("mockedJson");
+        when(likesService.countLikesWithRedis(1L)).thenReturn(5L);
+
+        // When
+        Page<PostListResponseDto> result = postService.searchByTitleAndCategory(request, pageable);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Test Post", result.getContent().get(0).title());
+        assertEquals(PostCategory.ELECTRONICS, result.getContent().get(0).category());
+        verify(postRepository).searchByTitleAndCategory("Test", PostCategory.ELECTRONICS, pageable);
+        verify(redisService).setKeyWithExpiration(eq("post:1"), anyString(), eq(6000L));
+    }
+
+
+    @Test
+    @DisplayName("제목 + 카테고리 검색 : 성공(검색 결과가 없는 경우 빈 페이지 반환)")
+    void searchByTitleAndCategory_noResults() {
+        // Given
+        SearchPostRequestDto request = new SearchPostRequestDto("Nonexistent", PostCategory.ELECTRONICS);
+        Page<Post> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
+        when(postRepository.searchByTitleAndCategory("Nonexistent", PostCategory.ELECTRONICS, pageable)).thenReturn(emptyPage);
+
+        // When
+        Page<PostListResponseDto> result = postService.searchByTitleAndCategory(request, pageable);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(0, result.getTotalElements());
+        assertTrue(result.getContent().isEmpty());
+        verify(postRepository).searchByTitleAndCategory("Nonexistent", PostCategory.ELECTRONICS, pageable);
+        verify(s3Service, never()).downloadFiles(anyList());
+    }
+
+
+    @Test
+    @DisplayName("제목 + 카테고리 검색 : 실패(JSON 처리 오류 발생)")
+    void searchByTitleAndCategory_jsonProcessingError() throws JsonProcessingException {
+        // Given
+        SearchPostRequestDto request = new SearchPostRequestDto("Test", PostCategory.ELECTRONICS);
+        Page<Post> postPage = new PageImpl<>(List.of(defaultPost), pageable, 1);
+        when(postRepository.searchByTitleAndCategory("Test", PostCategory.ELECTRONICS, pageable)).thenReturn(postPage);
+        when(s3Service.downloadFiles(anyList())).thenReturn(List.of(new byte[0]));
+        when(redisService.get("post:1")).thenReturn(null);
+        when(objectMapper.writeValueAsString(any(RedisRequest.class))).thenThrow(new JsonProcessingException("JSON error") {});
+
+        // When & Then
+        CustomException exception = assertThrows(CustomException.class,
+                () -> postService.searchByTitleAndCategory(request, pageable));
+        assertEquals(ErrorCode.JSON_PASSING_ERROR, exception.getErrorCode());
+        verify(postRepository).searchByTitleAndCategory("Test", PostCategory.ELECTRONICS, pageable);
     }
 }
