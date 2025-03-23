@@ -1,7 +1,7 @@
 package com.backend.post.controller;
 
-import com.backend.common.service.S3Service;
 import com.backend.post.dto.request.RegisterPostRequestDto;
+import com.backend.post.dto.request.SearchPostRequestDto;
 import com.backend.post.dto.request.UpdateRequestDto;
 import com.backend.post.dto.response.PostListResponseDto;
 import com.backend.post.dto.response.PostResponseDto;
@@ -13,8 +13,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
@@ -42,8 +44,10 @@ public class PostController {
      * 중고 거래 상세글 생성
      */
     @PostMapping
-    public ResponseEntity<Void> create(@RequestBody @Valid RegisterPostRequestDto requestDto) throws IOException {
-        postService.create(requestDto);
+    public ResponseEntity<Void> create(@RequestPart @Valid RegisterPostRequestDto requestDto,
+                                       @RequestPart(value = "imageFiles", required = false) MultipartFile[] nonJsonImageFiles) throws IOException {
+
+        postService.create(RegisterPostRequestDto.from(requestDto, nonJsonImageFiles));
         return ResponseEntity.ok().build();
     }
 
@@ -65,9 +69,12 @@ public class PostController {
      */
     @PutMapping("/{postId}")
     public ResponseEntity<Void> updatePost(@PathVariable Long postId,
-                                           @RequestBody @Valid UpdateRequestDto request,
+                                           @RequestPart @Valid UpdateRequestDto requestDto,
+                                           @RequestPart(value = "imageFiles", required = false) MultipartFile[] nonJsonImageFiles,
                                            Authentication authentication) throws Exception {
-        postService.update(request, authentication);
+
+        postService.update(UpdateRequestDto.from(requestDto, nonJsonImageFiles), authentication);
+
         return ResponseEntity.ok().build();
     }
 
@@ -80,6 +87,34 @@ public class PostController {
                                           Authentication authentication){
         postService.deleteList(postIds, authentication);
         return ResponseEntity.ok().build();
+    }
+
+
+    /**
+     * 제목과 카테로리로 검색
+     */
+    @PostMapping("/search")
+    public ResponseEntity<Page<PostListResponseDto>> searchPosts(@RequestBody @Valid SearchPostRequestDto request,
+                                                                 Pageable pageable) {
+        Page<PostListResponseDto> result = postService.searchByTitleAndCategory(request, pageable);
+
+        return ResponseEntity
+                .ok()
+                .body(result);
+    }
+
+
+    /**
+     * 카테고리 버튼을 위한 검색
+     */
+    @PostMapping("/category")
+    public ResponseEntity<Page<PostListResponseDto>> searchCategory(@RequestBody @Valid SearchPostRequestDto request,
+                                                                    Pageable pageable) {
+        Page<PostListResponseDto> result = postService.searchByCategory(request, pageable);
+
+        return ResponseEntity
+                .ok()
+                .body(result);
     }
 
 
