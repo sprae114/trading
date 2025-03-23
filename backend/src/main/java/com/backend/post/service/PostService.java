@@ -6,9 +6,11 @@ import com.backend.common.model.RedisRequest;
 import com.backend.common.service.RedisService;
 import com.backend.common.service.S3Service;
 import com.backend.post.dto.request.RegisterPostRequestDto;
+import com.backend.post.dto.request.SearchPostRequestDto;
 import com.backend.post.dto.request.UpdateRequestDto;
 import com.backend.post.dto.response.PostListResponseDto;
 import com.backend.post.dto.response.PostResponseDto;
+import com.backend.post.model.PostCategory;
 import com.backend.post.model.entity.Post;
 import com.backend.post.repository.PostRepository;
 import com.backend.user.model.Role;
@@ -110,6 +112,78 @@ public class PostService {
 
         log.info("Successfully retrieved post list with size: {}", result.getTotalElements());
         return result;
+    }
+
+
+    /**
+     * 전체 검색
+     */
+    @Transactional(readOnly = true)
+    public Page<PostListResponseDto> searchByTitleAndCategory(SearchPostRequestDto request, Pageable pageable) {
+        log.info("Starting search - title: {}, category: {}, pageable: {}",
+                request.title(), request.postCategory(), pageable);
+
+        // 1. 입력 검증
+        String title = request.title() != null ? request.title().trim() : "";
+        PostCategory category = request.postCategory();
+
+        if (title.isEmpty() && category == null) {
+            log.warn("Both title and category are empty or null");
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        // 검색 조건에 따른 쿼리 실행
+        Page<Post> posts;
+        if (title.isEmpty()) {
+            log.debug("Title is empty, searching by category: {}", category);
+            posts = postRepository.searchByCategory(category, pageable);
+        } else if (category == PostCategory.ALL) {
+            log.debug("Category is ALL, searching by title: {}", title);
+            posts = postRepository.searchByTitle(title, pageable);
+        } else {
+            log.debug("Searching by title: {} and category: {}", title, category);
+            posts = postRepository.searchByTitleAndCategory(title, category, pageable);
+        }
+
+        // 검색 결과 매핑
+        return posts.map(this::mapToPostListResponseDto);
+    }
+
+    /**
+     * 카테고리 버튼을 위한 검색 메소드
+     */
+    @Transactional(readOnly = true)
+    public Page<PostListResponseDto> searchByCategory(SearchPostRequestDto request, Pageable pageable) {
+        log.info("Starting search - category: {}, pageable: {}", request.postCategory(), pageable);
+
+        return postRepository
+                .searchByCategory(request.postCategory(), pageable)
+                .map(this::mapToPostListResponseDto);
+    }
+
+
+    // 게시글을 DTO로 변환하는 공통 메서드
+    private PostListResponseDto mapToPostListResponseDto(Post post) {
+        log.debug("Processing post id: {}", post.getId());
+        try {
+            // 1. 이미지 다운로드
+            List<byte[]> downloadFiles = post.getImageUrls().isEmpty()
+                    ? null
+                    : s3Service.downloadFiles(post.getImageUrls());
+
+            // 2. redis에서 view 가져오기
+            Long redisView = getRedisView(post);
+
+            // 3. redis에서 like 갯수 가져오기
+            Long likeCount = likesService.countLikesWithRedis(post.getId());
+
+            log.debug("Post id: {} - Views: {}, Likes: {}", post.getId(), redisView, likeCount);
+            return PostListResponseDto.from(post, redisView, likeCount, downloadFiles);
+        } catch (JsonProcessingException e) {
+
+            log.error("Failed to process JSON for post id: {}", post.getId(), e);
+            throw new CustomException(ErrorCode.JSON_PASSING_ERROR, e.getMessage());
+        }
     }
 
 
