@@ -18,7 +18,9 @@ import java.util.List;
 @Table(
         name = "post",
         indexes = {
-                @Index(name = "idx_customer_id", columnList = "customerId")
+                @Index(name = "idx_customer_id", columnList = "customerId"),
+                @Index(name = "idx_title", columnList = "title"),
+                @Index(name = "idx_category", columnList = "category")
         }
 )
 @ToString(callSuper = true)
