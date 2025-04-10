@@ -26,6 +26,7 @@ public class KafkaConsumer {
 
     @KafkaListener(topics = "chat-topic", groupId = "chat-group")
     public void listen(String message) throws JsonProcessingException {
+        log.info("kafka Listen: {}", message);
         ChatMessage chatMessage = objectMapper.readValue(message, ChatMessage.class);
         messagingTemplate.convertAndSend("/topic/chat-room/" + chatMessage.getRoomId(), chatMessage);
     }
