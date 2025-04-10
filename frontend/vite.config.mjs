@@ -46,7 +46,10 @@ export default defineConfig({
       vueTemplate: true,
     }),
   ],
-  define: { 'process.env': {} },
+  define: { 
+    'process.env': {}, 
+    global: "window", // 브라우저 환경에서 global 대신 window 사용
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
