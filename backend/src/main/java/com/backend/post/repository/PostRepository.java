@@ -10,13 +10,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PostRepository extends JpaRepository<Post, Long> {
 
     Page<Post> findAllByCustomerId(Long customerId, Pageable pageable);
 
-    List<Post> findAllByIdIn(List<Long> postId);
+    List<Post> findAllByIdIn(List<Long> postIds);
 
     Page<Post> findAllByIdIn(List<Long> postId, Pageable pageable);
 
@@ -35,4 +36,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // 카테고리만으로 검색
     @Query("SELECT p FROM Post p WHERE p.category = :category")
     Page<Post> searchByCategory(@Param("category") PostCategory category, Pageable pageable);
+
+    // 제목과 일치하는 검색
+    Optional<Post> findByTitle(String title);
+
+    @Query("SELECT p FROM Post p WHERE p.id IN :postIds AND p.title LIKE %:title%")
+    Page<Post> findAllByIdInAndTitleContains(@Param("postIds") List<Long> postIds, @Param("title") String title, Pageable pageable);
 }
