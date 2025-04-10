@@ -1,4 +1,4 @@
-package com.backend.post.util;
+package com.backend.post.scheduler;
 
 import com.backend.common.model.RedisRequest;
 import com.backend.post.model.entity.Post;
@@ -38,7 +38,7 @@ public class CountSyncScheduler {
     private static final String CACHE_KEY_PREFIX = "post:";
 
 
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(cron = "0 0 */12 * * *")
     @Transactional
     public void syncViewCounts() throws JsonProcessingException {
 
@@ -92,7 +92,7 @@ public class CountSyncScheduler {
         log.info("View count synchronization completed at {}.", LocalDateTime.now());
     }
 
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(cron = "0 0 */12 * * *")
     public void syncLikeCount() throws JsonProcessingException {
         // 1. redisTemplate에서 "post:"로 시작하는 모든 키 가져오기
         Set<String> keys = redisTemplate.keys(CACHE_KEY_PREFIX + "*");
