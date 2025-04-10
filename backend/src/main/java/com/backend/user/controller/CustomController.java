@@ -10,6 +10,7 @@ import com.backend.user.dto.request.UpdateCustomerRequest;
 import com.backend.user.dto.response.CustomerDetailsDto;
 import com.backend.user.dto.response.LoginResponseDto;
 import com.backend.user.model.Role;
+import com.backend.user.model.entity.Customer;
 import com.backend.user.service.CustomerService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -67,18 +68,25 @@ public class CustomController {
             throw new CustomException(ErrorCode.USER_NOT_FOUND);
         }
 
+        Customer findCustomer = customerService.findByEmail(requestDto.email());
+        String findAuthorities = authenticationResponse.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.joining(","));
+
         String jwt = "";
         if (null != env) {
             String secret = env.getProperty(ApplicationConstants.JWT_SECRET_KEY,
                     ApplicationConstants.JWT_SECRET_DEFAULT_VALUE);
 
+
+
             SecretKey secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
             jwt = Jwts.builder()
                     .issuer("Trading System")
                     .subject("JWT Token")
-                    .claim("username", authenticationResponse.getName())
-                    .claim("authorities", authenticationResponse.getAuthorities().stream().map(
-                            GrantedAuthority::getAuthority).collect(Collectors.joining(",")))
+                    .claim("email", authenticationResponse.getName())
+                    .claim("username", findCustomer.getName())
+                    .claim("authorities", findAuthorities)
                     .issuedAt(new java.util.Date())
                     .expiration(new java.util.Date((new java.util.Date()).getTime() + 3000000)) // 토큰 만료 시간 설정 (50분)
                     .signWith(secretKey).compact();
@@ -86,8 +94,8 @@ public class CustomController {
 
         // 사용자 정보 반환
         CustomerDetailsDto userInformation = CustomerDetailsDto.builder()
-                .customer(customerService.findByEmail(requestDto.email()))
-                .role(Role.ROLE_CUSTOMER)
+                .customer(findCustomer)
+                .role(Role.valueOf(findAuthorities))
                 .build();
 
         return ResponseEntity
