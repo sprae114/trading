@@ -1,13 +1,13 @@
 package com.backend.chat.controller;
 
-import com.backend.chat.dto.ChatMessageSaveDto;
-import com.backend.chat.dto.ChatRoomSaveDto;
-import com.backend.chat.dto.ChatRoomDeleteDto;
+import com.backend.chat.dto.*;
 import com.backend.chat.model.ChatMessage;
 import com.backend.chat.model.ChatRoom;
 import com.backend.chat.service.ChatMessageService;
 import com.backend.chat.service.ChatRoomService;
 import com.backend.common.service.KafkaProducer;
+import com.backend.post.dto.response.PostSimpleResponseDto;
+import com.backend.post.service.PostService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
@@ -19,8 +19,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -32,23 +34,31 @@ public class ChatController {
     private final ChatRoomService chatRoomService;
     private final KafkaProducer kafkaProducer;
     private final ObjectMapper objectMapper;
+    private final PostService postService;
 
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping
+    public Page<ChatRoom> getRooms(@RequestBody ChatRoomSearchRequestDto requestDto,
+                                   @PageableDefault(page = 0, size = 7, sort = "id", direction = Sort.Direction.ASC)
+                                   Pageable pageable) {
 
-    /**
-     * 사용자 채팅방 리스트 페이징 조회
-     */
-    @GetMapping("/rooms")
-    public Page<ChatRoom> getRooms(@RequestParam Long senderId, Pageable pageable) {
-        return chatRoomService.getList(senderId, pageable);
+        return chatRoomService.searchChatRoomList(requestDto, pageable);
     }
 
 
     /**
      * 해당 채팅방 입장
      */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/rooms/{roomId}")
-    public ChatRoom getRoom(@PathVariable String roomId) {
-        return chatRoomService.getOne(roomId);
+    public ChatRoomInfoResponseDto getRoom(@PathVariable String roomId) {
+        ChatRoom findChatRoom = chatRoomService.getOne(roomId);
+        PostSimpleResponseDto postForChat = postService.getPostForChat(findChatRoom.getName());
+
+        return ChatRoomInfoResponseDto.builder()
+                .chatRoom(findChatRoom)
+                .postSimpleResponseDto(postForChat)
+                .build();
     }
 
 
@@ -59,14 +69,16 @@ public class ChatController {
     public void handleMessage(@Valid ChatMessageSaveDto messageDto,
                               @DestinationVariable("chatRoomId") String chatRoomId)
             throws JsonProcessingException {
+        ChatMessageSaveDto saveDto = messageDto.toBuilder().timestamp(LocalDateTime.now()).build();
 
-        ChatMessage chatMessage = chatMessageService.saveOne(messageDto); // 메시지 저장
+        ChatMessage chatMessage = chatMessageService.saveOne(saveDto); // 메시지 저장
         kafkaProducer.sendMessage("chat-topic", objectMapper.writeValueAsString(chatMessage)); // kafka 전달
     }
 
     /**
      *  채팅방 생성
      */
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/rooms")
     public ChatRoom createRoom(@RequestBody ChatRoomSaveDto chatRoomSaveDto) {
         return chatRoomService.makeChatRoom(chatRoomSaveDto);
@@ -76,6 +88,7 @@ public class ChatController {
     /**
      * 채팅방 삭제
      */
+    @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/rooms")
     public void deleteRoom(@RequestBody ChatRoomDeleteDto customerInfo) {
         chatRoomService.delete(customerInfo);
@@ -85,10 +98,11 @@ public class ChatController {
     /**
      * 해당 채팅방 내용 가져오기
      */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/rooms/{roomId}/messages")
-    public Slice<ChatMessage> getMessages(
+    public Page<ChatMessage> getMessages(
             @PathVariable String roomId,
-            @PageableDefault(sort = "timestamp", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(sort = "timestamp", page = 0, size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
         return chatMessageService.findAll(pageable, roomId);
     }
 
