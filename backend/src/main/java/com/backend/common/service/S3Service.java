@@ -169,13 +169,16 @@ public class S3Service {
 
     private byte[] downloadImage(String fileName) {
         try {
+            String prefix = "http://localhost:9000/my-bucket/";
+            String name = fileName.startsWith(prefix) ? fileName.substring(prefix.length()) : fileName;
+
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucketName)
-                    .key(fileName)
+                    .key(name)
                     .build();
 
             byte[] fileData = s3Client.getObjectAsBytes(getObjectRequest).asByteArray();
-            log.debug("Downloaded file '{}' from bucket '{}', size: {} bytes", fileName, bucketName, fileData.length);
+            log.debug("Downloaded file '{}' from bucket '{}', size: {} bytes", name, bucketName, fileData.length);
             return fileData;
         } catch (Exception e) {
             log.warn("File '{}' not found or error occurred in bucket '{}'", fileName, bucketName, e);
