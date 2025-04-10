@@ -5,11 +5,15 @@ import com.backend.common.exception.ErrorCode;
 import com.backend.common.model.RedisRequest;
 import com.backend.common.service.RedisService;
 import com.backend.post.dto.response.LikeResponseDto;
+import com.backend.post.dto.response.PostListResponseDto;
 import com.backend.post.model.entity.Likes;
 import com.backend.post.model.entity.Post;
 import com.backend.post.repository.LikesRepository;
 import com.backend.post.repository.PostRepository;
 import com.backend.user.model.Role;
+import com.backend.user.model.entity.Customer;
+import com.backend.user.repository.CustomerRepository;
+import com.backend.user.service.CustomerService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -31,6 +36,7 @@ public class LikesService {
     private final RedisService redisService;
     private final ObjectMapper objectMapper;
     private final PostRepository postRepository;
+    private final CustomerRepository customerRepository;
 
     private static final String CACHE_KEY_PREFIX = "post:";
 
@@ -57,7 +63,7 @@ public class LikesService {
     }
 
     /**
-     * 해당 좋아요 있는지 확인
+     * 해당 좋아요 가져오기
      */
     @Transactional(readOnly = true)
     public LikeResponseDto getOne(Long postId, Long customerId) {
@@ -74,6 +80,33 @@ public class LikesService {
         return LikeResponseDto.toDto(likes);
     }
 
+    /**특정 게시글에 대한 사용자의 좋아요 여부 확인*/
+    @Transactional(readOnly = true)
+    public boolean isLiked(Long postId, Long customerId) {
+        boolean exists = likesRepository.existsByPostIdAndCustomerId(postId, customerId);
+
+        if (!exists) {
+            log.warn("Like not found - postId: {}, customerId: {}", postId, customerId);
+        }
+
+        return exists;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isLiked(Long postId, Authentication authentication) {
+        Customer customer = customerRepository.findByEmail(authentication.getName()).orElseThrow(
+                () -> new CustomException(ErrorCode.USER_NOT_FOUND, authentication.getName())
+        );
+
+
+        boolean exists = likesRepository.existsByPostIdAndCustomerId(postId, customer.getId());
+
+        if (!exists) {
+            log.warn("Like not found - postId: {}, customerId: {}", postId, customer.getId());
+        }
+
+        return exists;
+    }
 
     /**
      * DB에 좋아요 수 조회
@@ -91,6 +124,14 @@ public class LikesService {
         return likesRepository
                 .findAllByCustomerId(customerId, pageable)
                 .map(LikeResponseDto::toDto);
+    }
+
+    @Transactional(readOnly = true)
+    public List<LikeResponseDto> getAllLikes(Long customerId) {
+        return likesRepository.findAllByCustomerId(customerId)
+                .stream()
+                .map(LikeResponseDto::toDto)
+                .collect(Collectors.toList());
     }
 
     /**

@@ -19,6 +19,9 @@ public interface LikesRepository extends JpaRepository<Likes, Long> {
 
     Page<Likes> findAllByCustomerId(Long customerId, Pageable pageable);
 
+    List<Likes> findAllByCustomerId(Long customerId);
+
+
     @Modifying
     void deleteByPostIdAndCustomerId(Long postId, Long customerId);
 
@@ -29,4 +32,6 @@ public interface LikesRepository extends JpaRepository<Likes, Long> {
     void deleteAllByPostId(Long postId);
 
     List<Likes> findAllByPostId(Long postId);
+
+    Boolean existsByPostIdAndCustomerId(Long postId, Long customerId);
 }
