@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
-@Builder
+@Builder(toBuilder = true)
 @Document(collection = "chat_rooms")
 @Data
 public class ChatRoom {
@@ -20,6 +20,8 @@ public class ChatRoom {
     private Long senderId;
 
     private String sender;
+
+    private Long receiverId;
 
     private String receiver;
 

@@ -18,6 +18,8 @@ public record ChatRoomSaveDto(
         @NotEmpty(message = "보낸 사람을 입력하세요.")
         String sender,
 
+        Long receiverId,
+
         @NotEmpty(message = "받는 사람을 입력하세요.")
         String receiver,
 
@@ -28,6 +30,7 @@ public record ChatRoomSaveDto(
                 .name(chatRoomSaveDto.name())
                 .senderId(chatRoomSaveDto.senderId())
                 .sender(chatRoomSaveDto.sender())
+                .receiverId(chatRoomSaveDto.receiverId())
                 .receiver(chatRoomSaveDto.receiver())
                 .createdAt(LocalDateTime.now())
                 .build();
