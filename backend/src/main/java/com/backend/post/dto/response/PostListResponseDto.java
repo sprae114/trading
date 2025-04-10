@@ -17,6 +17,7 @@ public record PostListResponseDto(
         String customerName,
         TradeStatus tradeStatus,
         PostCategory category,
+        Long price,
         Long views,
         Long likesCount,
         List<byte[]> images
@@ -30,6 +31,7 @@ public record PostListResponseDto(
                 .customerId(post.getCustomerId())
                 .customerName(post.getCustomerName())
                 .tradeStatus(post.getTradeStatus())
+                .price(post.getPrice())
                 .category(post.getCategory())
                 .views(RedisPostViews)
                 .likesCount(RedisLikeCount)

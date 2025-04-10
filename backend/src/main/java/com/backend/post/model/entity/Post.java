@@ -47,6 +47,8 @@ public class Post extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private TradeStatus tradeStatus;
 
+    private Long price;
+
     private Long views;
 
     @Type(JsonType.class)

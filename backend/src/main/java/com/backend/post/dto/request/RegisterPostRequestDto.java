@@ -17,6 +17,7 @@ public record RegisterPostRequestDto(
 
     @NotEmpty(message = "내용을 입력해주세요.")
     String body,
+    Long price,
     Long customerId,
     String customerName,
     PostCategory category,
@@ -29,6 +30,7 @@ public record RegisterPostRequestDto(
                 .builder()
                 .title(request.title())
                 .body(request.body())
+                .price(request.price())
                 .customerId(request.customerId())
                 .customerName(request.customerName())
                 .category(request.category())
@@ -42,7 +44,7 @@ public record RegisterPostRequestDto(
                 .body(request.body())
                 .customerId(request.customerId())
                 .customerName(request.customerName())
-                .views(0L)
+                .price(request.price())
                 .category(request.category())
                 .tradeStatus(TradeStatus.SALE)
                 .views(0L)

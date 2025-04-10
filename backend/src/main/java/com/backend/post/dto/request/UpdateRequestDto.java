@@ -16,6 +16,7 @@ public record UpdateRequestDto(
         String title,
         @NotEmpty(message = "내용을 입력해주세요.")
         String body,
+        Long price,
 
         TradeStatus tradeStatus,
         PostCategory category,
@@ -29,9 +30,22 @@ public record UpdateRequestDto(
                         .id(request.id())
                         .title(request.title())
                         .body(request.body())
+                        .price(request.price())
                         .tradeStatus(request.tradeStatus())
                         .category(request.category())
                         .imageFiles(NonJsonImageFiles)
+                        .build();
+        }
+
+        public static UpdateRequestDto from(UpdateRequestDto request) {
+                return UpdateRequestDto
+                        .builder()
+                        .id(request.id())
+                        .title(request.title())
+                        .body(request.body())
+                        .price(request.price())
+                        .tradeStatus(request.tradeStatus())
+                        .category(request.category())
                         .build();
         }
 }
