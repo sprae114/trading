@@ -1,4 +1,4 @@
-package com.backend.common.configuration.test;
+package com.backend.common.configuration.prod;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,11 +11,12 @@ import java.util.Arrays;
 import java.util.Collections;
 
 /**
- * 테스트 환경에서의 CORS 설정
+ * 운영 환경에서의 CORS 설정
  */
 @Configuration
-@Profile("test")
-public class TestCorsDevConfig {
+@Profile("prod")
+public class ProdCorsConfig {
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
