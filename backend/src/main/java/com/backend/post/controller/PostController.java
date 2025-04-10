@@ -3,6 +3,7 @@ package com.backend.post.controller;
 import com.backend.post.dto.request.RegisterPostRequestDto;
 import com.backend.post.dto.request.SearchPostRequestDto;
 import com.backend.post.dto.request.UpdateRequestDto;
+import com.backend.post.dto.response.LikeResponseDto;
 import com.backend.post.dto.response.PostListResponseDto;
 import com.backend.post.dto.response.PostResponseDto;
 import com.backend.post.service.LikesService;
@@ -10,8 +11,11 @@ import com.backend.post.service.PostService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -24,6 +28,7 @@ import java.util.List;
 /**
  * 중고거래 글 API
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/post")
 @RequiredArgsConstructor
@@ -36,13 +41,16 @@ public class PostController {
      * 중고거래 글 목록 조회
      */
     @GetMapping
-    public ResponseEntity<Page<PostListResponseDto>> getPostList(Pageable pageable){
+    public ResponseEntity<Page<PostListResponseDto>> getPostList(
+            @PageableDefault(page = 0, size = 5, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
         return ResponseEntity.ok(postService.getList(pageable));
     }
 
     /**
      * 중고 거래 상세글 생성
      */
+    @PreAuthorize("isAuthenticated()")
     @PostMapping
     public ResponseEntity<Void> create(@RequestPart @Valid RegisterPostRequestDto requestDto,
                                        @RequestPart(value = "imageFiles", required = false) MultipartFile[] nonJsonImageFiles) throws IOException {
@@ -55,12 +63,15 @@ public class PostController {
     /**
      * 중고 거래 상세글 조회
      */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{postId}")
-    public ResponseEntity<PostResponseDto> getPostOne(@PathVariable Long postId) throws JsonProcessingException {
+    public ResponseEntity<PostResponseDto> getPostOne(@PathVariable Long postId, Authentication authentication) throws JsonProcessingException {
+        PostResponseDto postResponseDto = postService.getOne(postId);
+        boolean liked = likesService.isLiked(postId, authentication);
 
         return ResponseEntity
                 .ok()
-                .body(postService.getOne(postId));
+                .body(postResponseDto.toBuilder().isLiked(liked).build());
     }
 
 
@@ -69,11 +80,10 @@ public class PostController {
      */
     @PutMapping("/{postId}")
     public ResponseEntity<Void> updatePost(@PathVariable Long postId,
-                                           @RequestPart @Valid UpdateRequestDto requestDto,
-                                           @RequestPart(value = "imageFiles", required = false) MultipartFile[] nonJsonImageFiles,
+                                           @RequestBody @Valid UpdateRequestDto updateRequestDto,
                                            Authentication authentication) throws Exception {
 
-        postService.update(UpdateRequestDto.from(requestDto, nonJsonImageFiles), authentication);
+        postService.update(UpdateRequestDto.from(updateRequestDto), authentication);
 
         return ResponseEntity.ok().build();
     }
@@ -82,10 +92,10 @@ public class PostController {
     /**
      * 중고거래 상세글 삭제
      */
+    @PreAuthorize("isAuthenticated()")
     @DeleteMapping
-    public ResponseEntity<Void> deleteAll(@RequestBody List<Long> postIds,
-                                          Authentication authentication){
-        postService.deleteList(postIds, authentication);
+    public ResponseEntity<Void> delete(@RequestParam Long postId, Authentication authentication){
+        postService.delete(postId, authentication);
         return ResponseEntity.ok().build();
     }
 
@@ -95,7 +105,7 @@ public class PostController {
      */
     @PostMapping("/search")
     public ResponseEntity<Page<PostListResponseDto>> searchPosts(@RequestBody @Valid SearchPostRequestDto request,
-                                                                 Pageable pageable) {
+                                                                 @PageableDefault(page = 0, size = 5, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
         Page<PostListResponseDto> result = postService.searchByTitleAndCategory(request, pageable);
 
         return ResponseEntity
@@ -103,26 +113,12 @@ public class PostController {
                 .body(result);
     }
 
-
-    /**
-     * 카테고리 버튼을 위한 검색
-     */
-    @PostMapping("/category")
-    public ResponseEntity<Page<PostListResponseDto>> searchCategory(@RequestBody @Valid SearchPostRequestDto request,
-                                                                    Pageable pageable) {
-        Page<PostListResponseDto> result = postService.searchByCategory(request, pageable);
-
-        return ResponseEntity
-                .ok()
-                .body(result);
-    }
-
-
     /**
      * 중고거래 상세글 좋아요 저장
      */
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/{postId}/like")
-    public ResponseEntity<Void> saveLike(@PathVariable Long postId, Long customerId) throws Exception {
+    public ResponseEntity<Void> saveLike(@PathVariable Long postId, @RequestParam Long customerId) throws Exception {
 
         likesService.create(postId, customerId);
         return ResponseEntity.ok().build();
@@ -132,8 +128,9 @@ public class PostController {
     /**
      * 중고거래 상세글 좋아요 삭제
      */
+    @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/{postId}/like")
-    public ResponseEntity<Void> deleteLike(@PathVariable Long postId, Long customerId) throws Exception {
+    public ResponseEntity<Void> deleteLike(@PathVariable Long postId, @RequestParam Long customerId) throws Exception {
 
         likesService.deleteOne(postId, customerId);
         return ResponseEntity.ok().build();
