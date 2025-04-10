@@ -1,4 +1,4 @@
-package com.backend.post.util;
+package com.backend.post.scheduler;
 
 import com.backend.common.model.RedisRequest;
 import com.backend.post.model.entity.Post;

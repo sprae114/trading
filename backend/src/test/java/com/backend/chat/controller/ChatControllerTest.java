@@ -1,15 +1,14 @@
 package com.backend.chat.controller;
 
-import com.backend.chat.dto.ChatMessageSaveDto;
-import com.backend.chat.dto.ChatRoomDeleteDto;
-import com.backend.chat.dto.ChatRoomSaveDto;
-import com.backend.chat.dto.RoomInfo;
+import com.backend.chat.dto.*;
 import com.backend.chat.model.ChatMessage;
 import com.backend.chat.model.ChatRoom;
 import com.backend.chat.repository.ChatMessageRepository;
 import com.backend.chat.repository.ChatRoomRepository;
 import com.backend.chat.service.ChatMessageService;
 import com.backend.chat.service.ChatRoomService;
+import com.backend.post.dto.response.PostSimpleResponseDto;
+import com.backend.post.service.PostService;
 import com.backend.user.model.Role;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -49,6 +50,9 @@ public class ChatControllerTest {
     @Autowired
     private ChatRoomService chatRoomService;
 
+    @MockBean
+    private PostService postService;
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -62,6 +66,8 @@ public class ChatControllerTest {
         chatRoomRepository.deleteAll();
 
         chatRoom = makeChatRoom("testRoom1", 1L);
+        when(postService.getPostForChat("testRoom1")).thenReturn(PostSimpleResponseDto.builder().title("testRoom1").build());
+
         makeChatMessage(chatRoom.getId(), "testMessage1");
         makeChatMessage(chatRoom.getId(), "testMessage2");
     }
@@ -71,15 +77,15 @@ public class ChatControllerTest {
     @WithMockUser(username = "User1")
     void getRooms_success() throws Exception {
         // Given
-        Long senderId = 1L;
-        Pageable pageable = Pageable.ofSize(10);
+        ChatRoomSearchRequestDto requestDto = new ChatRoomSearchRequestDto(1L, "");
 
         // When & Then
-        mockMvc.perform(get("/api/chat/rooms")
-                        .param("senderId", String.valueOf(senderId))
-                        .param("page", String.valueOf(pageable.getPageNumber()))
-                        .param("size", String.valueOf(pageable.getPageSize())))
-                .andDo(MockMvcResultHandlers.print())
+        mockMvc.perform(post("/api/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto))
+                        .param("page", "0")
+                        .param("size", "7")
+                        .param("sort", "id,asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.[*].id").isNotEmpty())
                 .andExpect(jsonPath("$.content.[*].name").isNotEmpty())
@@ -91,14 +97,15 @@ public class ChatControllerTest {
     @DisplayName("해당 유저의 채팅방 목록 조회 - 실패(로그인 X)")
     void getRooms_fail_not_Customer() throws Exception {
         // Given
-        Long senderId = 1L;
-        Pageable pageable = Pageable.ofSize(10);
+        ChatRoomSearchRequestDto requestDto = new ChatRoomSearchRequestDto(1L, null);
 
         // When & Then
-        mockMvc.perform(get("/api/chat/rooms")
-                        .param("senderId", String.valueOf(senderId))
-                        .param("page", String.valueOf(pageable.getPageNumber()))
-                        .param("size", String.valueOf(pageable.getPageSize())))
+        mockMvc.perform(post("/api/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto))
+                        .param("page", "0")
+                        .param("size", "7")
+                        .param("sort", "id,asc"))
                 .andExpect(status().isForbidden());
     }
 
@@ -107,14 +114,13 @@ public class ChatControllerTest {
     @DisplayName("채팅방 입장 - 성공")
     @WithMockUser(username = "User1")
     void getRoom_success() throws Exception {
-        // Given
-        // When & Then
         mockMvc.perform(get("/api/chat/rooms/{roomId}", chatRoom.getId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").isNotEmpty())
-                .andExpect(jsonPath("$.name").isNotEmpty());
+                .andExpect(jsonPath("$.chatRoom.id").isNotEmpty())
+                .andExpect(jsonPath("$.chatRoom.name").value("testRoom1"))
+                .andExpect(jsonPath("$.postSimpleResponseDto").exists()) // postSimpleResponseDto 필드 존재 여부 확인
+                .andExpect(jsonPath("$.postSimpleResponseDto.title").value("testRoom1")); // PostSimpleResponseDto의 title 검증
     }
-
 
     @Test
     @DisplayName("채팅방 입장 - 실패(로그인 X)")
