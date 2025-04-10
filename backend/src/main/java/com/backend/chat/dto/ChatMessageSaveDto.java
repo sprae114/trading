@@ -7,7 +7,7 @@ import lombok.Builder;
 
 import java.time.LocalDateTime;
 
-@Builder
+@Builder(toBuilder = true)
 public record ChatMessageSaveDto(
         @NotNull(message = "채팅방을 입력하세요.")
         String roomId,
