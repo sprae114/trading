@@ -20,8 +20,12 @@ public class ProdCorsConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("https://localhost:3000", "http://localhost:3000",  // vue
-                "https://localhost:9000", "http://localhost:9000")); // s3
+        configuration.setAllowedOrigins(Arrays.asList(
+                "https://localhost:9000", "http://localhost:9000",
+                "https://localhost:3000", "http://localhost:3000",
+                "https://localhost:80", "http://localhost:80",
+                "https://trading-frontend:80", "http://trading-frontend:80",
+                "https://frontend:80", "http://frontend:80"));
         configuration.setAllowedMethods(Collections.singletonList("*"));
         configuration.setAllowCredentials(true);
         configuration.setAllowedHeaders(Collections.singletonList("*"));

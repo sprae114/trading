@@ -4,6 +4,7 @@ const store = createStore({
     state(){
         return {
             backendUrl: 'http://localhost:8080',
+            // backendUrl: 'http://backend:8000',
 
             //네이게이션바 관련
             isDrawerOpen: false,

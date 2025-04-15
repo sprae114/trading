@@ -298,8 +298,10 @@ export default {
             axios.delete(`${this.backendUrl}/api/post?postId=${this.$route.params.item}`, {
                 headers: { 'Authorization': `Bearer ${jwt}` },
             }).then(() => {
+                this.SET_BTN_ALERT(false);
                 this.$router.push(this.path);
             }).catch(error => {
+                this.SHOW_NOMAL_ALERT_MESSAGE(['error', '오류가 발생했습니다. 다시 시도해주세요']);
             });
         },
         async like() { // 좋아요 추가
