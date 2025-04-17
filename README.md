@@ -60,8 +60,7 @@
 - Redis를 이용해 상품 조회수와 좋아요 수를 인메모리에서 실시간 집계, RDBMS 부하를 약 70% 감소시켰습니다.
 - Spring Scheduler를 통해 Redis와 MySQL 간 데이터를 5분 간격으로 동기화, 데이터 일관성을 유지했습니다.
   ![Image](https://github.com/user-attachments/assets/4357ef62-8724-4d75-afb6-fc44852ec088)
-  ![image](https://github.com/sprae114/Study/assets/52237184/507890f9-cdba-4894-89af-b89e25f567c8)
-- 
+  
 ### 4) WebSocket과 Kafka를 이용한 실시간 채팅
 - WebSocket을 통해 실시간 양방향 통신을 구현, 사용자 간 즉각적인 채팅 경험을 제공했습니다.
 - Kafka를 도입하여 채팅 메시지의 비동기 처리를 구현, 대규모 사용자 요청에도 안정적인 서비스를 유지했습니다.
