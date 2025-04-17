@@ -35,7 +35,7 @@ spring:
   kafka:
     bootstrap-servers: trading-kafka:9092
     consumer:
-      group-id: chat-group
+      group-id: chat-topic
 
 aws:
   s3:

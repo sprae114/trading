@@ -3,8 +3,9 @@ import { createStore } from 'vuex';
 const store = createStore({
     state(){
         return {
-            backendUrl: 'http://localhost:8080',
-            // backendUrl: 'http://backend:8000',
+            // backendUrl: 'http://localhost:8080',
+            // backendUrl: 'http://localhost:8081',
+            backendUrl: 'http://localhost:3000',
 
             //네이게이션바 관련
             isDrawerOpen: false,

@@ -8,6 +8,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -21,14 +23,16 @@ import java.io.IOException;
 public class KafkaConsumer {
 
     private final ObjectMapper objectMapper;
-    private final SimpMessagingTemplate messagingTemplate; // websocket 연결
+    private final StringRedisTemplate stringRedisTemplate;
+    private final ChannelTopic chatChannelTopic;
     private final SseEmitterRegistry emitters; // sse 알람
 
     @KafkaListener(topics = "chat-topic", groupId = "chat-group")
     public void listen(String message) throws JsonProcessingException {
         log.info("kafka Listen: {}", message);
         ChatMessage chatMessage = objectMapper.readValue(message, ChatMessage.class);
-        messagingTemplate.convertAndSend("/topic/chat-room/" + chatMessage.getRoomId(), chatMessage);
+        // 기존 Redis pub/sub 방식 유지
+        stringRedisTemplate.convertAndSend(chatChannelTopic.getTopic(), message);
     }
 
 

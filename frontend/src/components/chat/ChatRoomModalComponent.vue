@@ -110,6 +110,7 @@ export default {
                 this.totalPages = response.data.totalPages;
                 let messages = response.data.content || []; // content가 없으면 빈 배열
 
+
                 const newMessages = messages.map(message => ({ 
                     text: message.content,
                     isMine: message.sender === this.userInfo.customer.name,

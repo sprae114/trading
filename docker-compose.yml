@@ -9,24 +9,43 @@ services:
     ports:
       - "3000:80"
     depends_on:
-      - backend
+      - backend1
+      - backend2
     networks:
       - trading-network
     restart: on-failure
 
-  backend:
+  backend1:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: trading-backend
+    container_name: trading-backend1
     image: trading-backend:latest
-    ports:
-      - "8080:8080"
     env_file:
       - ./backend/.env
     environment:
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
+      - mysql
+      - redis
+      - mongodb
+      - kafka
+      - minio
+    networks:
+      - trading-network
+
+  backend2:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trading-backend2
+    image: trading-backend:latest
+    env_file:
+      - ./backend/.env
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    depends_on:
+      - backend1
       - mysql
       - redis
       - mongodb

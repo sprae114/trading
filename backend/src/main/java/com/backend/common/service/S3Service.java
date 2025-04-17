@@ -169,7 +169,7 @@ public class S3Service {
 
     private byte[] downloadImage(String fileName) {
         try {
-            String prefix = "http://localhost:9000/my-bucket/";
+            String prefix = "http://trading-minio:9000/my-bucket/";
             String name = fileName.startsWith(prefix) ? fileName.substring(prefix.length()) : fileName;
 
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
